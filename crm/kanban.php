@@ -10,6 +10,7 @@ $user = getSessionUser();
   </div>
   <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;">
     <button class="btn btn-ghost btn-sm" onclick="kanban.reload()">⟳ Atualizar</button>
+    <button class="btn btn-ghost btn-sm" onclick="kanban.abrirNovoContato()">👤 Novo contato</button>
     <button class="btn btn-primary btn-sm" onclick="kanban.abrirCriar()">+ Nova negociação</button>
   </div>
 </div>
@@ -364,6 +365,70 @@ const kanban = (() => {
 
   return { reload, abrirCriar, abrirDetalhe, salvar, addInteracao, marcarGanho, marcarPerdido };
 })();
+</script>
+
+<!-- Modal: Novo Contato (atalho rápido) -->
+<div id="modal-novo-contato" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Novo Contato</span>
+      <button class="modal-close" onclick="closeModal('modal-novo-contato')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nome *</label>
+        <input class="form-control" id="nc-nome">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Telefone</label>
+          <input class="form-control" id="nc-tel" type="tel">
+        </div>
+        <div class="form-group">
+          <label class="form-label">E-mail</label>
+          <input class="form-control" id="nc-email" type="email">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Origem</label>
+        <input class="form-control" id="nc-origem" placeholder="Ex: Indicação, Site, Anúncio">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-novo-contato')">Cancelar</button>
+      <button class="btn btn-primary" onclick="kanban.salvarNovoContato()">Salvar contato</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Estender kanban com função de novo contato
+kanban.abrirNovoContato = function() {
+  ['nc-nome','nc-tel','nc-email','nc-origem'].forEach(id => document.getElementById(id).value = '');
+  openModal('modal-novo-contato');
+};
+
+kanban.salvarNovoContato = async function() {
+  const nome = document.getElementById('nc-nome').value.trim();
+  if (!nome) { toast('Nome é obrigatório.', 'error'); return; }
+  try {
+    const r = await api('/crm/api/contatos.php?action=criar', {
+      method: 'POST',
+      body: JSON.stringify({
+        nome,
+        telefone: document.getElementById('nc-tel').value,
+        email:    document.getElementById('nc-email').value,
+        origem:   document.getElementById('nc-origem').value,
+      }),
+    });
+    toast('Contato criado!');
+    closeModal('modal-novo-contato');
+    // Recarregar selects se o modal de negociação estiver aberto
+    if (!document.getElementById('modal-neg').classList.contains('hidden')) {
+      kanban.abrirCriar();
+    }
+  } catch(e) { toast(e.message, 'error'); }
+};
 </script>
 
 <?php layoutEnd(); ?>

@@ -207,14 +207,27 @@ if ($method === 'POST' && $action === 'mover') {
     $etapa = $ve->fetch();
     if (!$etapa) jsonResponse(['error' => 'Etapa inválida.'], 400);
 
-    $stmt = $pdo->prepare("UPDATE negociacoes SET etapa_id = :eta WHERE id = :id AND empresa_id = :emp");
-    $stmt->execute([':eta' => $etapaId, ':id' => $id, ':emp' => $empresaId]);
+    // Auto-definir status baseado no nome da etapa
+    $nomeEtapa = mb_strtolower(trim($etapa['nome']));
+    if (str_contains($nomeEtapa, 'ganho') || $nomeEtapa === 'won') {
+        $novoStatus = 'ganho';
+    } elseif (str_contains($nomeEtapa, 'perdido') || str_contains($nomeEtapa, 'lost')) {
+        $novoStatus = 'perdido';
+    } else {
+        $novoStatus = 'em_andamento';
+    }
+
+    $stmt = $pdo->prepare(
+        "UPDATE negociacoes SET etapa_id = :eta, status = :status WHERE id = :id AND empresa_id = :emp"
+    );
+    $stmt->execute([':eta' => $etapaId, ':status' => $novoStatus, ':id' => $id, ':emp' => $empresaId]);
 
     registrarLog($empresaId, (int)$user['id'], 'moveu_negociacao', $id, [
         'negociacao' => $neg['titulo'],
         'etapa'      => $etapa['nome'],
+        'status'     => $novoStatus,
     ]);
-    jsonResponse(['success' => true]);
+    jsonResponse(['success' => true, 'status' => $novoStatus]);
 }
 
 // ---------------------------------------------------------------

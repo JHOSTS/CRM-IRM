@@ -87,3 +87,18 @@ function e(string $str): string {
 function getEmpresaId(array $user): int {
     return (int) $user['empresa_id'];
 }
+
+/**
+ * Retorna branding (logo, cores) da empresa do usuário logado.
+ */
+function getEmpresaBranding(int $empresaId): array {
+    try {
+        $pdo  = getDB();
+        $stmt = $pdo->prepare("SELECT logo, cor_primaria, cor_secundaria FROM empresas WHERE id = :id");
+        $stmt->execute([':id' => $empresaId]);
+        $row  = $stmt->fetch();
+        return $row ?: ['logo' => null, 'cor_primaria' => '#4361ee', 'cor_secundaria' => '#1a1d27'];
+    } catch (PDOException $e) {
+        return ['logo' => null, 'cor_primaria' => '#4361ee', 'cor_secundaria' => '#1a1d27'];
+    }
+}

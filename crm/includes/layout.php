@@ -1,22 +1,19 @@
 <?php
-/**
- * Layout base — inclua no topo de cada página interna:
- *   require_once __DIR__ . '/../includes/layout.php';
- *   layoutStart('Título da Página', 'nav-item-id');
- *   ... conteúdo ...
- *   layoutEnd();
- */
-
 require_once __DIR__ . '/auth.php';
 $_LAYOUT_USER = requireLogin(false);
 
 function layoutStart(string $title, string $activeNav): void {
     global $_LAYOUT_USER;
-    $cargo = $_LAYOUT_USER['cargo'];
-    $nome  = e($_LAYOUT_USER['nome']);
-    $inicial = mb_strtoupper(mb_substr($_LAYOUT_USER['nome'], 0, 1));
+    $cargo     = $_LAYOUT_USER['cargo'];
+    $nome      = e($_LAYOUT_USER['nome']);
+    $inicial   = mb_strtoupper(mb_substr($_LAYOUT_USER['nome'], 0, 1));
     $isMaster  = $cargo === 'master';
     $isGerente = in_array($cargo, ['gerente','master'], true);
+    $empId     = getEmpresaId($_LAYOUT_USER);
+    $branding  = getEmpresaBranding($empId);
+    $corPrim   = e($branding['cor_primaria'] ?: '#4361ee');
+    $corSec    = e($branding['cor_secundaria'] ?: '#1a1d27');
+    $logo      = $branding['logo'] ? '/crm/' . e($branding['logo']) : null;
     ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -27,6 +24,14 @@ function layoutStart(string $title, string $activeNav): void {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/crm/assets/css/style.css">
+  <!-- Branding da empresa -->
+  <style>
+    :root {
+      --accent:   <?= $corPrim ?>;
+      --accent-h: <?= $corPrim ?>cc;
+      --surface:  <?= $corSec ?>;
+    }
+  </style>
   <script src="/crm/assets/js/utils.js"></script>
   <script src="/crm/assets/js/app.js"></script>
 </head>
@@ -36,21 +41,25 @@ function layoutStart(string $title, string $activeNav): void {
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <div class="dot"></div>
-      <span>CRM IRM</span>
+      <?php if ($logo): ?>
+        <img src="<?= $logo ?>" alt="Logo" style="height:32px;max-width:130px;object-fit:contain;">
+      <?php else: ?>
+        <div class="dot" style="background:<?= $corPrim ?>"></div>
+        <span>CRM IRM</span>
+      <?php endif; ?>
     </div>
 
     <nav class="sidebar-nav">
       <div class="nav-group-label">Principal</div>
 
-      <div class="nav-item <?= $activeNav === 'kanban' ? 'active' : '' ?>"
-           onclick="window.location.href='/crm/kanban.php'">
-        <span class="icon">⬛</span> Negociações
-      </div>
-
       <div class="nav-item <?= $activeNav === 'contatos' ? 'active' : '' ?>"
            onclick="window.location.href='/crm/contatos.php'">
         <span class="icon">👥</span> Contatos
+      </div>
+
+      <div class="nav-item <?= $activeNav === 'kanban' ? 'active' : '' ?>"
+           onclick="window.location.href='/crm/kanban.php'">
+        <span class="icon">⬛</span> Negociações
       </div>
 
       <div class="nav-item <?= $activeNav === 'atividades' ? 'active' : '' ?>"
@@ -98,7 +107,7 @@ function layoutStart(string $title, string $activeNav): void {
     </nav>
 
     <div class="sidebar-user">
-      <div class="user-avatar"><?= $inicial ?></div>
+      <div class="user-avatar" style="background:<?= $corPrim ?>"><?= $inicial ?></div>
       <div class="user-info">
         <div class="name"><?= $nome ?></div>
         <div class="role"><?= $cargo ?></div>
@@ -117,7 +126,6 @@ function layoutEnd(): void {
   </div><!-- /main-content -->
 </div><!-- /app-layout -->
 
-<!-- Toast container -->
 <div id="toast-container"></div>
 </body>
 </html>

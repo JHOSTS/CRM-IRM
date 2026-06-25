@@ -90,9 +90,14 @@ const dash = (() => {
         <div class="metric-value blue">${t.taxa_conversao}%</div>
       </div>
       <div class="metric-card">
-        <div class="metric-label">Em andamento</div>
-        <div class="metric-value yellow">${t.em_andamento}</div>
-        <div class="metric-sub">${fmtMoney(t.valor_total)}</div>
+        <div class="metric-label">Em Negociação</div>
+        <div class="metric-value yellow">${t.em_negociacao}</div>
+        <div class="metric-sub">${fmtMoney(t.valor_em_negociacao)}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Pipeline total</div>
+        <div class="metric-value">${t.pipeline}</div>
+        <div class="metric-sub">${fmtMoney(t.valor_pipeline)}</div>
       </div>
       <div class="metric-card">
         <div class="metric-label">Tarefas atrasadas</div>

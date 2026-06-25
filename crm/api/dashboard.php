@@ -28,13 +28,20 @@ $porEtapa = $stmtEtapas->fetchAll();
 $stmtTotais = $pdo->prepare(
     "SELECT
        COUNT(*) AS total,
-       SUM(CASE WHEN status = 'ganho'    THEN 1 ELSE 0 END) AS ganhas,
-       SUM(CASE WHEN status = 'perdido'  THEN 1 ELSE 0 END) AS perdidas,
-       SUM(CASE WHEN status = 'em_andamento' THEN 1 ELSE 0 END) AS em_andamento,
-       COALESCE(SUM(CASE WHEN status = 'ganho' THEN valor_estimado END), 0) AS valor_ganho,
-       COALESCE(SUM(valor_estimado), 0) AS valor_total
-     FROM negociacoes
-     WHERE empresa_id = :emp AND DATE(data_criacao) BETWEEN :ini AND :fim"
+       SUM(CASE WHEN n.status = 'ganho'   THEN 1 ELSE 0 END) AS ganhas,
+       SUM(CASE WHEN n.status = 'perdido' THEN 1 ELSE 0 END) AS perdidas,
+       COALESCE(SUM(CASE WHEN n.status = 'ganho' THEN n.valor_estimado END), 0) AS valor_ganho,
+       -- Em andamento = apenas negociações na etapa 'Em Negociação'
+       SUM(CASE WHEN n.status = 'em_andamento'
+                 AND LOWER(e.nome) LIKE '%negoci%' THEN 1 ELSE 0 END) AS em_negociacao,
+       COALESCE(SUM(CASE WHEN n.status = 'em_andamento'
+                          AND LOWER(e.nome) LIKE '%negoci%' THEN n.valor_estimado END), 0) AS valor_em_negociacao,
+       -- Pipeline = todas em andamento (exceto ganho/perdido)
+       SUM(CASE WHEN n.status = 'em_andamento' THEN 1 ELSE 0 END) AS pipeline,
+       COALESCE(SUM(CASE WHEN n.status = 'em_andamento' THEN n.valor_estimado END), 0) AS valor_pipeline
+     FROM negociacoes n
+     JOIN etapas_funil e ON e.id = n.etapa_id
+     WHERE n.empresa_id = :emp AND DATE(n.data_criacao) BETWEEN :ini AND :fim"
 );
 $stmtTotais->execute([':emp' => $empresaId, ':ini' => $inicio, ':fim' => $fim]);
 $totais = $stmtTotais->fetch();
