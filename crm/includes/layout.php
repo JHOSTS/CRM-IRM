@@ -27,6 +27,8 @@ function layoutStart(string $title, string $activeNav): void {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/crm/assets/css/style.css">
+  <script src="/crm/assets/js/utils.js"></script>
+  <script src="/crm/assets/js/app.js"></script>
 </head>
 <body>
 <div class="app-layout">
@@ -117,10 +119,6 @@ function layoutEnd(): void {
 
 <!-- Toast container -->
 <div id="toast-container"></div>
-
-<!-- Scripts globais -->
-<script src="/crm/assets/js/utils.js"></script>
-<script src="/crm/assets/js/app.js"></script>
 </body>
 </html>
     <?php
