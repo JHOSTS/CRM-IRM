@@ -1,12 +1,24 @@
 <?php
-// Configuração de conexão com o banco de dados
-// ATENÇÃO: Este arquivo nunca deve ser acessível publicamente.
-// O .htaccess na raiz do projeto bloqueia acesso direto à pasta /config/
+// Lê variáveis do arquivo .env (sem dependência de Composer)
+// O .env fica na raiz do projeto, fora do versionamento git
+function loadEnv(string $path): void {
+    if (!file_exists($path)) return;
+    foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        if (str_starts_with(trim($line), '#') || !str_contains($line, '=')) continue;
+        [$key, $value] = array_map('trim', explode('=', $line, 2));
+        if ($key && !array_key_exists($key, $_ENV)) {
+            $_ENV[$key] = $value;
+            putenv("$key=$value");
+        }
+    }
+}
 
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'seu_banco_crm');   // Alterar para o nome do banco criado no cPanel
-define('DB_USER', 'seu_usuario_db');  // Alterar para o usuário MySQL do cPanel
-define('DB_PASS', 'sua_senha_db');    // Alterar para a senha do usuário MySQL
+loadEnv(__DIR__ . '/../.env');
+
+define('DB_HOST',    $_ENV['DB_HOST']    ?? 'localhost');
+define('DB_NAME',    $_ENV['DB_NAME']    ?? '');
+define('DB_USER',    $_ENV['DB_USER']    ?? '');
+define('DB_PASS',    $_ENV['DB_PASS']    ?? '');
 define('DB_CHARSET', 'utf8mb4');
 
 function getDB(): PDO {
@@ -21,7 +33,6 @@ function getDB(): PDO {
         try {
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
-            // Em produção nunca exibir detalhes do erro de conexão
             http_response_code(500);
             echo json_encode(['error' => 'Erro de conexão com o banco de dados.']);
             exit;
