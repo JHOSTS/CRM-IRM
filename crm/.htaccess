@@ -1,0 +1,42 @@
+# CRM IRM — Configurações Apache
+
+# Charset padrão
+AddDefaultCharset UTF-8
+
+# Bloquear acesso direto às pastas sensíveis
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Bloquear acesso direto a /config/
+    RewriteRule ^config/ - [F,L]
+
+    # Bloquear acesso direto a /includes/
+    RewriteRule ^includes/ - [F,L]
+</IfModule>
+
+# Cabeçalhos de segurança
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Desabilitar listagem de diretórios
+Options -Indexes
+
+# Proteger arquivos sensíveis
+<FilesMatch "(\.env|\.git|composer\.(json|lock)|package\.json)">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Expiração de cache para assets estáticos
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+</IfModule>
