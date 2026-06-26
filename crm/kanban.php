@@ -114,7 +114,7 @@ const kanban = (() => {
             <div class="col-dot" style="background:${esc(etapa.cor)}"></div>
             <span class="col-name">${esc(etapa.nome)}</span>
           </div>
-          <span class="col-count">${etapa.cards.length}</span>
+          <span class="col-count">${etapa.cards.filter(c => c.status === 'em_andamento').length}</span>
         </div>
         <div class="kanban-cards" data-etapa="${etapa.id}" id="col-${etapa.id}">
           ${etapa.cards.length === 0
@@ -130,14 +130,38 @@ const kanban = (() => {
     const atrasado = card.tarefas_atrasadas > 0
       ? `<span class="card-late">⚠ ${card.tarefas_atrasadas} atrasada${card.tarefas_atrasadas > 1 ? 's' : ''}</span>` : '';
     const valor = card.valor_estimado ? `<span class="card-value">${fmtMoney(card.valor_estimado)}</span>` : '';
+    const concluido = card.status !== 'em_andamento';
+
+    // Dias restantes até sumir (14 dias após data_atualizacao)
+    let expiraBadge = '';
+    if (concluido && card.data_atualizacao) {
+      const dias = 14 - Math.floor((Date.now() - new Date(card.data_atualizacao)) / 86400000);
+      expiraBadge = `<span style="font-size:.65rem;color:var(--text-muted)">expira em ${dias}d</span>`;
+    }
+
+    const statusBadgeEl = concluido
+      ? `<span class="badge" style="font-size:.65rem;padding:2px 6px;background:${card.status==='ganho'?'var(--success)':'var(--danger)'}20;color:${card.status==='ganho'?'var(--success)':'var(--danger)'};">
+           ${card.status === 'ganho' ? '✓ Ganho' : '✗ Perdido'}
+         </span>`
+      : '';
+
+    const cardStyle = concluido
+      ? `opacity:.55;border-left:3px solid ${card.status==='ganho'?'var(--success)':'var(--danger)'};`
+      : '';
+
     return `
-      <div class="kanban-card" draggable="true" data-id="${card.id}" onclick="kanban.abrirDetalhe(${card.id})">
-        <div class="card-title">${esc(card.titulo)}</div>
+      <div class="kanban-card" draggable="${!concluido}" data-id="${card.id}"
+           style="${cardStyle}" onclick="kanban.abrirDetalhe(${card.id})">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px;">
+          <div class="card-title" style="flex:1">${esc(card.titulo)}</div>
+          ${statusBadgeEl}
+        </div>
         <div class="card-contact">👤 ${esc(card.contato_nome)}</div>
         <div class="card-footer">
           ${valor}
           <span class="card-resp">👥 ${esc(card.responsavel)}</span>
           ${atrasado}
+          ${expiraBadge}
         </div>
       </div>`;
   }
@@ -145,7 +169,7 @@ const kanban = (() => {
   function setupDragDrop() {
     let dragging = null;
 
-    document.querySelectorAll('.kanban-card').forEach(card => {
+    document.querySelectorAll('.kanban-card[draggable="true"]').forEach(card => {
       card.addEventListener('dragstart', e => {
         dragging = card;
         card.classList.add('dragging');

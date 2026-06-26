@@ -38,7 +38,7 @@ if ($method === 'GET' && $action === 'pendentes') {
 if ($method === 'GET' && $action === 'kanban') {
     $stmt = $pdo->prepare(
         "SELECT e.id AS etapa_id, e.nome AS etapa_nome, e.cor, e.ordem,
-                n.id, n.titulo, n.valor_estimado, n.status,
+                n.id, n.titulo, n.valor_estimado, n.status, n.data_atualizacao,
                 c.nome AS contato_nome,
                 u.nome AS responsavel_nome,
                 (SELECT COUNT(*) FROM atividades a
@@ -46,11 +46,15 @@ if ($method === 'GET' && $action === 'kanban') {
                    AND a.data_vencimento < NOW()) AS tarefas_atrasadas
          FROM etapas_funil e
          LEFT JOIN negociacoes n ON n.etapa_id = e.id
-           AND n.empresa_id = :emp AND n.status = 'em_andamento'
+           AND n.empresa_id = :emp
+           AND (
+             n.status = 'em_andamento'
+             OR (n.status IN ('ganho','perdido') AND n.data_atualizacao >= DATE_SUB(NOW(), INTERVAL 14 DAY))
+           )
          LEFT JOIN contatos c ON c.id = n.contato_id
          LEFT JOIN usuarios u ON u.id = n.responsavel_id
          WHERE e.empresa_id = :emp2
-         ORDER BY e.ordem ASC, n.data_atualizacao DESC"
+         ORDER BY e.ordem ASC, n.status ASC, n.data_atualizacao DESC"
     );
     $stmt->execute([':emp' => $empresaId, ':emp2' => $empresaId]);
     $rows = $stmt->fetchAll();
@@ -69,12 +73,14 @@ if ($method === 'GET' && $action === 'kanban') {
         }
         if ($row['id']) {
             $etapas[$eid]['cards'][] = [
-                'id'              => (int)$row['id'],
-                'titulo'          => $row['titulo'],
-                'contato_nome'    => $row['contato_nome'],
-                'responsavel'     => $row['responsavel_nome'],
-                'valor_estimado'  => $row['valor_estimado'] ? (float)$row['valor_estimado'] : null,
+                'id'                => (int)$row['id'],
+                'titulo'            => $row['titulo'],
+                'contato_nome'      => $row['contato_nome'],
+                'responsavel'       => $row['responsavel_nome'],
+                'valor_estimado'    => $row['valor_estimado'] ? (float)$row['valor_estimado'] : null,
                 'tarefas_atrasadas' => (int)$row['tarefas_atrasadas'],
+                'status'            => $row['status'],
+                'data_atualizacao'  => $row['data_atualizacao'],
             ];
         }
     }
