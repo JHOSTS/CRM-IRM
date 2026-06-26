@@ -65,8 +65,34 @@ layoutStart('Contatos', 'contatos');
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Origem (ex: Indicação, Site, Anúncio)</label>
-        <input class="form-control" id="contato-origem">
+        <label class="form-label">Origem</label>
+        <select class="form-select" id="contato-origem">
+          <option value="">— Selecione —</option>
+          <optgroup label="Meios Digitais">
+            <option>Anúncios Google</option>
+            <option>Anúncios Facebook/Instagram</option>
+            <option>Site / Formulário web</option>
+            <option>WhatsApp</option>
+            <option>E-mail marketing</option>
+            <option>LinkedIn</option>
+            <option>YouTube</option>
+            <option>SEO / Busca orgânica</option>
+            <option>Loja virtual / E-commerce</option>
+          </optgroup>
+          <optgroup label="Meios Físicos">
+            <option>Indicação de cliente</option>
+            <option>Evento / Feira</option>
+            <option>Visita presencial</option>
+            <option>Panfleto / Material impresso</option>
+            <option>Outdoor / Mídia exterior</option>
+            <option>Rádio / TV</option>
+            <option>Telefonema (receptivo)</option>
+          </optgroup>
+          <optgroup label="Outros">
+            <option>Parceiro / Revendedor</option>
+            <option>Outro</option>
+          </optgroup>
+        </select>
       </div>
       <div class="form-row">
         <div class="form-group">
