@@ -10,6 +10,29 @@ $method    = $_SERVER['REQUEST_METHOD'];
 $action    = clean($_GET['action'] ?? '');
 
 // ---------------------------------------------------------------
+// GET ?action=pendentes — leads ativos por etapa (alerta de login)
+// ---------------------------------------------------------------
+if ($method === 'GET' && $action === 'pendentes') {
+    $stmt = $pdo->prepare(
+        "SELECT e.nome AS etapa, COUNT(n.id) AS total
+         FROM negociacoes n
+         JOIN etapas_funil e ON e.id = n.etapa_id
+         WHERE n.empresa_id = :emp AND n.status = 'em_andamento'
+           AND (:cargo = 'atendente' AND n.responsavel_id = :uid OR :cargo2 != 'atendente')
+         GROUP BY e.id ORDER BY e.ordem ASC"
+    );
+    $stmt->execute([
+        ':emp'   => $empresaId,
+        ':cargo' => $user['cargo'],
+        ':cargo2'=> $user['cargo'],
+        ':uid'   => (int)$user['id'],
+    ]);
+    $etapas = $stmt->fetchAll();
+    $total  = array_sum(array_column($etapas, 'total'));
+    jsonResponse(['etapas' => $etapas, 'total' => (int)$total]);
+}
+
+// ---------------------------------------------------------------
 // GET ?action=kanban — lista negociações agrupadas por etapa
 // ---------------------------------------------------------------
 if ($method === 'GET' && $action === 'kanban') {
@@ -163,6 +186,11 @@ if ($method === 'POST' && $action === 'criar') {
     $vc = $pdo->prepare("SELECT id FROM contatos WHERE id = :id AND empresa_id = :emp");
     $vc->execute([':id' => $contatoId, ':emp' => $empresaId]);
     if (!$vc->fetch()) jsonResponse(['error' => 'Contato inválido.'], 400);
+
+    // Bloquear contato com negociação ativa já existente
+    $vd = $pdo->prepare("SELECT id FROM negociacoes WHERE contato_id = :cid AND empresa_id = :emp AND status = 'em_andamento'");
+    $vd->execute([':cid' => $contatoId, ':emp' => $empresaId]);
+    if ($vd->fetch()) jsonResponse(['error' => 'Este contato já possui uma negociação em andamento.'], 409);
 
     $ve = $pdo->prepare("SELECT id FROM etapas_funil WHERE id = :id AND empresa_id = :emp");
     $ve->execute([':id' => $etapaId, ':emp' => $empresaId]);

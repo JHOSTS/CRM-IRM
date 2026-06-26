@@ -13,8 +13,11 @@ $action    = clean($_GET['action'] ?? '');
 // GET ?action=lista
 // ---------------------------------------------------------------
 if ($method === 'GET' && $action === 'lista') {
-    $p     = getPagination();
-    $busca = clean($_GET['busca'] ?? '');
+    $p           = getPagination();
+    $busca       = clean($_GET['busca'] ?? '');
+    $filtroOrig  = clean($_GET['origem'] ?? '');
+    $filtroIni   = clean($_GET['data_ini'] ?? '');
+    $filtroFim   = clean($_GET['data_fim'] ?? '');
 
     $where  = ['c.empresa_id = :emp'];
     $params = [':emp' => $empresaId];
@@ -25,14 +28,32 @@ if ($method === 'GET' && $action === 'lista') {
         $params[':b2'] = "%$busca%";
         $params[':b3'] = "%$busca%";
     }
+    if ($filtroOrig) {
+        $where[] = 'c.origem = :orig';
+        $params[':orig'] = $filtroOrig;
+    }
+    if ($filtroIni) {
+        $where[] = 'DATE(c.data_entrada) >= :dini';
+        $params[':dini'] = $filtroIni;
+    }
+    if ($filtroFim) {
+        $where[] = 'DATE(c.data_entrada) <= :dfim';
+        $params[':dfim'] = $filtroFim;
+    }
     $whereStr = implode(' AND ', $where);
 
     $countStmt = $pdo->prepare("SELECT COUNT(*) FROM contatos c WHERE $whereStr");
     $countStmt->execute($params);
     $total = (int)$countStmt->fetchColumn();
 
+    // Origens disponíveis para filtro
+    $origStmt = $pdo->prepare("SELECT DISTINCT origem FROM contatos WHERE empresa_id = :emp AND origem IS NOT NULL ORDER BY origem ASC");
+    $origStmt->execute([':emp' => $empresaId]);
+    $origens = $origStmt->fetchAll(PDO::FETCH_COLUMN);
+
     $stmt = $pdo->prepare(
         "SELECT c.id, c.nome, c.telefone, c.email, c.origem, c.data_criacao,
+                c.data_entrada, c.data_nascimento, c.data_ultima_compra,
                 u.nome AS criado_por_nome,
                 (SELECT COUNT(*) FROM negociacoes n WHERE n.contato_id = c.id) AS total_negociacoes
          FROM contatos c
@@ -45,7 +66,7 @@ if ($method === 'GET' && $action === 'lista') {
     $params[':offset'] = $p['offset'];
     $stmt->execute($params);
 
-    jsonResponse(['data' => $stmt->fetchAll(), 'total' => $total, 'page' => $p['page'], 'limit' => $p['limit']]);
+    jsonResponse(['data' => $stmt->fetchAll(), 'total' => $total, 'page' => $p['page'], 'limit' => $p['limit'], 'origens' => $origens]);
 }
 
 // ---------------------------------------------------------------
@@ -104,6 +125,7 @@ if ($method === 'POST' && $action === 'criar') {
     $dataUltCompra    = clean($body['data_ultima_compra'] ?? '');
 
     if (!$nome) jsonResponse(['error' => 'Nome é obrigatório.'], 400);
+    if (!$tel)  jsonResponse(['error' => 'Telefone é obrigatório.'], 400);
 
     // data_entrada: manual ou NOW()
     $entradaVal = $dataEntrada ?: null;

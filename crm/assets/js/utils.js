@@ -71,12 +71,15 @@ function fmtMoney(v) {
 
 function fmtDate(d) {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('pt-BR');
+  // Parsear como data local para evitar deslocamento de fuso
+  const s = String(d).slice(0, 10);
+  const [y, m, day] = s.split('-').map(Number);
+  return new Date(y, m - 1, day).toLocaleDateString();
 }
 
 function fmtDateTime(d) {
   if (!d) return '—';
-  return new Date(d).toLocaleString('pt-BR');
+  return new Date(d).toLocaleString();
 }
 
 function fmtDateInput(d) {

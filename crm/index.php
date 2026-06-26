@@ -234,6 +234,7 @@ document.getElementById('login-form').addEventListener('submit', async function(
     });
     const data = await res.json();
     if (res.ok && data.success) {
+      sessionStorage.setItem('just_logged_in', '1');
       window.location.href = '/crm/kanban.php';
     } else {
       errEl.textContent = data.error || 'Erro ao fazer login.';

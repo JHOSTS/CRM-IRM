@@ -30,13 +30,12 @@ $stmtTotais = $pdo->prepare(
        COUNT(*) AS total,
        SUM(CASE WHEN n.status = 'ganho'   THEN 1 ELSE 0 END) AS ganhas,
        SUM(CASE WHEN n.status = 'perdido' THEN 1 ELSE 0 END) AS perdidas,
-       COALESCE(SUM(CASE WHEN n.status = 'ganho' THEN n.valor_estimado END), 0) AS valor_ganho,
-       -- Em andamento = apenas negociações na etapa 'Em Negociação'
+       COALESCE(SUM(CASE WHEN n.status = 'ganho'   THEN n.valor_estimado END), 0) AS valor_ganho,
+       COALESCE(SUM(CASE WHEN n.status = 'perdido' THEN n.valor_estimado END), 0) AS valor_perdido,
        SUM(CASE WHEN n.status = 'em_andamento'
                  AND LOWER(e.nome) LIKE '%negoci%' THEN 1 ELSE 0 END) AS em_negociacao,
        COALESCE(SUM(CASE WHEN n.status = 'em_andamento'
                           AND LOWER(e.nome) LIKE '%negoci%' THEN n.valor_estimado END), 0) AS valor_em_negociacao,
-       -- Pipeline = todas em andamento (exceto ganho/perdido)
        SUM(CASE WHEN n.status = 'em_andamento' THEN 1 ELSE 0 END) AS pipeline,
        COALESCE(SUM(CASE WHEN n.status = 'em_andamento' THEN n.valor_estimado END), 0) AS valor_pipeline
      FROM negociacoes n
@@ -80,6 +79,32 @@ $stmtContatos = $pdo->prepare(
 $stmtContatos->execute([':emp' => $empresaId, ':ini' => $inicio, ':fim' => $fim]);
 $novosContatos = (int)$stmtContatos->fetchColumn();
 
+// Leads por dia (últimos 30 dias dentro do período)
+$stmtDia = $pdo->prepare(
+    "SELECT DATE(data_criacao) AS dia, COUNT(*) AS total
+     FROM negociacoes
+     WHERE empresa_id = :emp AND DATE(data_criacao) BETWEEN :ini AND :fim
+     GROUP BY DATE(data_criacao) ORDER BY dia ASC"
+);
+$stmtDia->execute([':emp' => $empresaId, ':ini' => $inicio, ':fim' => $fim]);
+$leadsDia = $stmtDia->fetchAll();
+
+// Leads por usuário (atendentes)
+$stmtPorUser = $pdo->prepare(
+    "SELECT u.nome,
+            COUNT(n.id) AS total_leads,
+            SUM(CASE WHEN n.status = 'ganho'   THEN 1 ELSE 0 END) AS ganhos,
+            SUM(CASE WHEN n.status = 'perdido' THEN 1 ELSE 0 END) AS perdidos,
+            COALESCE(SUM(CASE WHEN n.status = 'ganho' THEN n.valor_estimado END), 0) AS valor_ganho
+     FROM usuarios u
+     LEFT JOIN negociacoes n ON n.responsavel_id = u.id
+       AND n.empresa_id = :emp AND DATE(n.data_criacao) BETWEEN :ini AND :fim
+     WHERE u.empresa_id = :emp2 AND u.cargo != 'master' AND u.status = 'ativo'
+     GROUP BY u.id ORDER BY total_leads DESC"
+);
+$stmtPorUser->execute([':emp' => $empresaId, ':emp2' => $empresaId, ':ini' => $inicio, ':fim' => $fim]);
+$leadsPorUser = $stmtPorUser->fetchAll();
+
 jsonResponse([
     'periodo'          => ['inicio' => $inicio, 'fim' => $fim],
     'totais'           => $totais,
@@ -87,4 +112,6 @@ jsonResponse([
     'ranking'          => $ranking,
     'tarefas_atrasadas'=> $tarefasAtrasadas,
     'novos_contatos'   => $novosContatos,
+    'leads_dia'        => $leadsDia,
+    'leads_por_user'   => $leadsPorUser,
 ]);

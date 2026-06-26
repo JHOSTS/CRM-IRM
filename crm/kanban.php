@@ -394,7 +394,33 @@ const kanban = (() => {
   }
 
   // Init
-  reload();
+  reload().then(() => {
+    if (sessionStorage.getItem('just_logged_in')) {
+      sessionStorage.removeItem('just_logged_in');
+      setTimeout(showPendingAlert, 700);
+    }
+  });
+
+  async function showPendingAlert() {
+    try {
+      const d = await api('/crm/api/negociacoes.php?action=pendentes');
+      if (!d.total) return;
+      const linhas = d.etapas.map(e =>
+        `<div style="display:flex;align-items:center;gap:10px;padding:5px 0;">
+           <span class="badge badge-info">${e.total}</span>
+           <span style="font-size:.85rem;">${esc(e.etapa)}</span>
+         </div>`
+      ).join('');
+      createModal({
+        id: 'modal-alerta-leads',
+        title: '📋 Leads em potencial',
+        body: `<p style="margin-bottom:12px;">Você tem <strong>${d.total}</strong> negociação(ões) em andamento. Revise os leads abaixo:</p>${linhas}`,
+        confirmLabel: 'Ver negociações',
+        confirmClass: 'btn-primary',
+        onConfirm: () => document.getElementById('modal-alerta-leads')?.remove(),
+      });
+    } catch { /* silencioso */ }
+  }
 
   return { reload, abrirCriar, abrirDetalhe, salvar, addInteracao, marcarGanho, marcarPerdido };
 })();

@@ -9,11 +9,17 @@ layoutStart('Contatos', 'contatos');
 </div>
 
 <div class="page-body">
-  <div class="toolbar">
-    <div class="search-wrap">
+  <div class="toolbar" style="flex-wrap:wrap;gap:8px;">
+    <div class="search-wrap" style="flex:1;min-width:200px;">
       <span class="search-icon">🔍</span>
       <input class="form-control" type="text" id="busca" placeholder="Buscar por nome, e-mail ou telefone…">
     </div>
+    <select class="form-select" id="filtro-origem" style="width:auto;">
+      <option value="">Todas as origens</option>
+    </select>
+    <input class="form-control" type="date" id="filtro-ini" style="width:150px;" title="Data de entrada de:">
+    <input class="form-control" type="date" id="filtro-fim" style="width:150px;" title="Data de entrada até:">
+    <button class="btn btn-ghost btn-sm" onclick="contatos.limparFiltros()">Limpar</button>
   </div>
 
   <div class="card">
@@ -24,7 +30,7 @@ layoutStart('Contatos', 'contatos');
           <thead>
             <tr>
               <th>Nome</th><th>Telefone</th><th>E-mail</th><th>Origem</th>
-              <th>Negociações</th><th>Criado em</th><th></th>
+              <th>Negociações</th><th>Última compra</th><th>Entrada</th><th></th>
             </tr>
           </thead>
           <tbody id="contatos-tbody"></tbody>
@@ -50,8 +56,8 @@ layoutStart('Contatos', 'contatos');
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Telefone</label>
-          <input class="form-control" id="contato-tel" type="tel">
+          <label class="form-label">Telefone *</label>
+          <input class="form-control" id="contato-tel" type="tel" required>
         </div>
         <div class="form-group">
           <label class="form-label">E-mail</label>
@@ -99,13 +105,22 @@ layoutStart('Contatos', 'contatos');
 <script>
 const contatos = (() => {
   let _page = 1, _busca = '', _total = 0, _limit = 30;
+  let _origem = '', _ini = '', _fim = '';
 
   async function load(page = 1) {
     _page = page;
     show('loading');
     try {
       const params = new URLSearchParams({ action: 'lista', page, busca: _busca });
+      if (_origem) params.set('origem', _origem);
+      if (_ini)    params.set('data_ini', _ini);
+      if (_fim)    params.set('data_fim', _fim);
       const d = await api('/crm/api/contatos.php?' + params);
+      // Preencher filtro de origens
+      const sel = document.getElementById('filtro-origem');
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">Todas as origens</option>' +
+        (d.origens || []).map(o => `<option value="${esc(o)}" ${o===prev?'selected':''}>${esc(o)}</option>`).join('');
       _total = d.total; _limit = d.limit;
       renderTabela(d.data);
       renderPagination(
@@ -126,10 +141,11 @@ const contatos = (() => {
       <tr>
         <td><strong>${esc(c.nome)}</strong></td>
         <td>${esc(c.telefone || '—')}</td>
-        <td>${esc(c.email || '—')}</td>
-        <td>${esc(c.origem || '—')}</td>
+        <td class="text-sm">${esc(c.email || '—')}</td>
+        <td class="text-sm">${esc(c.origem || '—')}</td>
         <td><span class="badge badge-info">${c.total_negociacoes}</span></td>
-        <td class="text-muted text-sm">${fmtDate(c.data_criacao)}</td>
+        <td class="text-sm text-muted">${c.data_ultima_compra ? fmtDate(c.data_ultima_compra) : '—'}</td>
+        <td class="text-sm text-muted">${c.data_entrada ? fmtDate(c.data_entrada) : fmtDate(c.data_criacao)}</td>
         <td>
           <div style="display:flex;gap:4px;">
             <button class="btn btn-ghost btn-sm btn-icon" onclick="contatos.ver(${c.id})" title="Ver detalhe">👁</button>
@@ -167,10 +183,20 @@ const contatos = (() => {
     } catch(e) { toast(e.message, 'error'); }
   }
 
+  function limparFiltros() {
+    document.getElementById('filtro-origem').value = '';
+    document.getElementById('filtro-ini').value    = '';
+    document.getElementById('filtro-fim').value    = '';
+    _origem = ''; _ini = ''; _fim = '';
+    load(1);
+  }
+
   async function salvar() {
     const id   = document.getElementById('contato-id').value;
     const nome = document.getElementById('contato-nome').value.trim();
+    const tel  = document.getElementById('contato-tel').value.trim();
     if (!nome) { toast('Nome é obrigatório.', 'error'); return; }
+    if (!tel)  { toast('Telefone é obrigatório.', 'error'); return; }
     const body = {
       nome,
       telefone:          document.getElementById('contato-tel').value,
@@ -272,15 +298,18 @@ const contatos = (() => {
     } catch(e) { toast(e.message, 'error'); }
   }
 
-  // Busca com debounce
+  // Listeners de filtros
   let _debounce;
   document.getElementById('busca').addEventListener('input', e => {
     clearTimeout(_debounce);
     _debounce = setTimeout(() => { _busca = e.target.value.trim(); load(1); }, 400);
   });
+  document.getElementById('filtro-origem').addEventListener('change', e => { _origem = e.target.value; load(1); });
+  document.getElementById('filtro-ini').addEventListener('change', e => { _ini = e.target.value; load(1); });
+  document.getElementById('filtro-fim').addEventListener('change', e => { _fim = e.target.value; load(1); });
 
   load();
-  return { abrirCriar, editar, salvar, ver, addInteracao };
+  return { abrirCriar, editar, salvar, ver, addInteracao, limparFiltros };
 })();
 </script>
 
