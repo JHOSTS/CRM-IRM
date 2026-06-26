@@ -42,6 +42,28 @@ function layoutStart(string $title, string $activeNav): void {
       --accent-h: <?= $corPrim ?>cc;
       --surface:  <?= $corSec ?>;
     }
+    <?php if ($logo): ?>
+    .main-content {
+      background-image: url('<?= $logo ?>');
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: 40%;
+      background-blend-mode: luminosity;
+    }
+    .main-content::before {
+      content: '';
+      position: fixed;
+      inset: 0 0 0 var(--sidebar-w, 240px);
+      background-image: url('<?= $logo ?>');
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: 320px auto;
+      opacity: 0.04;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .main-content > * { position: relative; z-index: 1; }
+    <?php endif; ?>
   </style>
   <script src="/crm/assets/js/utils.js"></script>
   <script src="/crm/assets/js/app.js"></script>
@@ -58,6 +80,12 @@ function layoutStart(string $title, string $activeNav): void {
         <div class="dot" style="background:<?= $corPrim ?>"></div>
         <span>CRM IRM</span>
       <?php endif; ?>
+    </div>
+    <div style="padding:4px 12px 10px;border-bottom:1px solid var(--border);text-align:center;">
+      <a href="https://www.irmcomunicacao.com" target="_blank" rel="noopener"
+         style="font-size:.6rem;color:var(--text-muted);opacity:.55;text-decoration:none;letter-spacing:.03em;">
+        desenvolvido por IRM Comunicação
+      </a>
     </div>
 
     <?php if ($isMaster && !empty($empresasLista)): ?>
@@ -81,17 +109,17 @@ function layoutStart(string $title, string $activeNav): void {
 
       <div class="nav-item <?= $activeNav === 'contatos' ? 'active' : '' ?>"
            onclick="window.location.href='/crm/contatos.php'">
-        <span class="icon">👥</span> Contatos
+        <span class="icon">🤝</span> Contatos
       </div>
 
       <div class="nav-item <?= $activeNav === 'kanban' ? 'active' : '' ?>"
            onclick="window.location.href='/crm/kanban.php'">
-        <span class="icon">⬛</span> Negociações
+        <span class="icon">🗂️</span> Negociações
       </div>
 
       <div class="nav-item <?= $activeNav === 'atividades' ? 'active' : '' ?>"
            onclick="window.location.href='/crm/atividades.php'">
-        <span class="icon">✅</span> Atividades
+        <span class="icon">📅</span> Atividades
         <span class="nav-badge hidden" id="badge-atv"></span>
       </div>
 
@@ -105,17 +133,17 @@ function layoutStart(string $title, string $activeNav): void {
 
       <div class="nav-item <?= $activeNav === 'relatorios' ? 'active' : '' ?>"
            onclick="window.location.href='/crm/relatorios.php'">
-        <span class="icon">📋</span> Relatórios
+        <span class="icon">📈</span> Relatórios
       </div>
 
       <div class="nav-item <?= $activeNav === 'log' ? 'active' : '' ?>"
            onclick="window.location.href='/crm/log.php'">
-        <span class="icon">🔍</span> Log de Atividades
+        <span class="icon">📜</span> Log de Atividades
       </div>
 
       <div class="nav-item <?= $activeNav === 'usuarios' ? 'active' : '' ?>"
            onclick="window.location.href='/crm/usuarios.php'">
-        <span class="icon">👤</span> Usuários
+        <span class="icon">👥</span> Usuários
       </div>
 
       <div class="nav-item <?= $activeNav === 'configuracoes' ? 'active' : '' ?>"
@@ -162,7 +190,6 @@ async function masterTrocarEmpresa(empresaId) {
       method: 'POST',
       body: JSON.stringify({ empresa_id: +empresaId }),
     });
-    // Recarregar a página para aplicar branding e dados da nova empresa
     window.location.reload();
   } catch(e) {
     toast(e.message || 'Erro ao trocar empresa.', 'error');
