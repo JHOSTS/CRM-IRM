@@ -169,16 +169,24 @@ const dash = (() => {
       document.getElementById('dash-ranking').innerHTML = '<p class="text-muted text-sm">Nenhum atendente.</p>';
       return;
     }
-    const maxGanhas = Math.max(...ranking.map(r => +(r.ganhas||0)), 1);
+    const maxGanhos = Math.max(...ranking.map(r => +(r.ganhos||0)), 1);
     document.getElementById('dash-ranking').innerHTML = ranking.map((r, i) => `
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-        <span style="font-size:1rem;width:24px;text-align:center">${i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`}</span>
-        <div style="flex:1;">
-          <div style="font-size:.85rem;font-weight:600">${esc(r.nome||'—')}</div>
-          <div style="font-size:.72rem;color:var(--text-muted)">${r.total_leads||0} leads · ${r.ganhos||0} ganhos · ${fmtMoney(r.valor_ganho||0)}</div>
+      <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1rem;width:24px;text-align:center;flex-shrink:0">${i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(r.nome||'—')}</div>
+            <div style="display:flex;gap:10px;font-size:.72rem;color:var(--text-muted);margin-top:2px;flex-wrap:wrap;">
+              <span>📋 ${r.total_leads||0} leads</span>
+              <span style="color:var(--success)">✓ ${r.ganhos||0} ganhos</span>
+              <span style="color:var(--danger)">✗ ${r.perdidos||0} perdidos</span>
+              <span>💰 ${fmtMoney(r.valor_ganho||0)}</span>
+              <span style="font-weight:600;color:var(--accent)">${r.conversao||0}% conversão</span>
+            </div>
+          </div>
         </div>
-        <div style="width:80px;">
-          <div class="bar-track"><div class="bar-fill" style="width:${((r.ganhos||0)/maxGanhas*100).toFixed(1)}%;background:var(--success)"></div></div>
+        <div style="margin-top:6px;margin-left:34px;">
+          <div class="bar-track"><div class="bar-fill" style="width:${((r.ganhos||0)/maxGanhos*100).toFixed(1)}%;background:var(--success)"></div></div>
         </div>
       </div>`).join('');
   }

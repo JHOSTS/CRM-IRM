@@ -53,17 +53,28 @@ $totais['taxa_conversao'] = $totais['total'] > 0
 // Ranking atendentes
 $stmtRanking = $pdo->prepare(
     "SELECT u.nome,
-            COUNT(n.id) AS total,
-            SUM(CASE WHEN n.status = 'ganho' THEN 1 ELSE 0 END) AS ganhas,
-            COALESCE(SUM(CASE WHEN n.status = 'ganho' THEN n.valor_estimado END), 0) AS valor_ganho
+            COUNT(n.id)                                                              AS total_leads,
+            SUM(CASE WHEN n.status = 'ganho'   THEN 1 ELSE 0 END)                  AS ganhos,
+            SUM(CASE WHEN n.status = 'perdido' THEN 1 ELSE 0 END)                  AS perdidos,
+            COALESCE(SUM(CASE WHEN n.status = 'ganho' THEN n.valor_estimado END),0) AS valor_ganho
      FROM usuarios u
-     LEFT JOIN negociacoes n ON n.responsavel_id = u.id
-       AND n.empresa_id = :emp AND DATE(n.data_criacao) BETWEEN :ini AND :fim
-     WHERE u.empresa_id = :emp2 AND u.cargo = 'atendente' AND u.status = 'ativo'
-     GROUP BY u.id ORDER BY ganhas DESC, valor_ganho DESC"
+     LEFT JOIN negociacoes n
+       ON n.responsavel_id = u.id
+      AND n.empresa_id = :emp
+      AND DATE(n.data_criacao) BETWEEN :ini AND :fim
+     WHERE u.empresa_id = :emp2
+       AND u.cargo != 'master'
+       AND u.status  = 'ativo'
+     GROUP BY u.id
+     ORDER BY ganhos DESC, valor_ganho DESC"
 );
 $stmtRanking->execute([':emp' => $empresaId, ':emp2' => $empresaId, ':ini' => $inicio, ':fim' => $fim]);
-$ranking = $stmtRanking->fetchAll();
+$ranking = array_map(function($r) {
+    $r['conversao'] = $r['total_leads'] > 0
+        ? round(($r['ganhos'] / $r['total_leads']) * 100, 1)
+        : 0;
+    return $r;
+}, $stmtRanking->fetchAll());
 
 // Tarefas atrasadas
 $stmtTarefas = $pdo->prepare(
