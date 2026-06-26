@@ -222,6 +222,17 @@ if ($method === 'POST' && $action === 'mover') {
     );
     $stmt->execute([':eta' => $etapaId, ':status' => $novoStatus, ':id' => $id, ':emp' => $empresaId]);
 
+    // Atualiza data_ultima_compra do contato quando negociação é ganha
+    if ($novoStatus === 'ganho') {
+        $nc = $pdo->prepare("SELECT contato_id FROM negociacoes WHERE id = :id");
+        $nc->execute([':id' => $id]);
+        $cid = (int)$nc->fetchColumn();
+        if ($cid) {
+            $pdo->prepare("UPDATE contatos SET data_ultima_compra = CURDATE() WHERE id = :id AND empresa_id = :emp")
+                ->execute([':id' => $cid, ':emp' => $empresaId]);
+        }
+    }
+
     registrarLog($empresaId, (int)$user['id'], 'moveu_negociacao', $id, [
         'negociacao' => $neg['titulo'],
         'etapa'      => $etapa['nome'],
@@ -252,6 +263,16 @@ if ($method === 'POST' && $action === 'editar') {
         if (!in_array($body['status'], ['em_andamento','ganho','perdido'], true)) jsonResponse(['error' => 'Status inválido.'], 400);
         $campos[] = 'status = :status'; $params[':status'] = $body['status'];
         if ($body['status'] === 'perdido') { $campos[] = 'motivo_perda = :mot'; $params[':mot'] = clean($body['motivo_perda'] ?? ''); }
+        if ($body['status'] === 'ganho') {
+            // Atualiza data_ultima_compra do contato
+            $nc = $pdo->prepare("SELECT contato_id FROM negociacoes WHERE id = :id AND empresa_id = :emp");
+            $nc->execute([':id' => $id, ':emp' => $empresaId]);
+            $cid = (int)$nc->fetchColumn();
+            if ($cid) {
+                $pdo->prepare("UPDATE contatos SET data_ultima_compra = CURDATE() WHERE id = :id AND empresa_id = :emp")
+                    ->execute([':id' => $cid, ':emp' => $empresaId]);
+            }
+        }
     }
     if (isset($body['etapa_id'])) {
         $ve = $pdo->prepare("SELECT id FROM etapas_funil WHERE id = :id AND empresa_id = :emp");

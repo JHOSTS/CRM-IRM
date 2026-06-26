@@ -4,11 +4,9 @@ layoutStart('Negociações', 'kanban');
 $user = getSessionUser();
 ?>
 
-<div class="kanban-toolbar">
-  <div>
-    <h1 style="font-size:1.2rem;font-weight:700;">Negociações</h1>
-  </div>
-  <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;">
+<div class="kanban-toolbar" style="position:relative;">
+  <h1 style="position:absolute;left:24px;top:50%;transform:translateY(-50%);font-size:1.1rem;font-weight:700;margin:0;">Negociações</h1>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%;">
     <button class="btn btn-ghost btn-sm" onclick="kanban.reload()">⟳ Atualizar</button>
     <button class="btn btn-ghost btn-sm" onclick="kanban.abrirNovoContato()">👤 Novo contato</button>
     <button class="btn btn-primary btn-sm" onclick="kanban.abrirCriar()">+ Nova negociação</button>
@@ -37,7 +35,14 @@ $user = getSessionUser();
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Contato *</label>
-          <select class="form-select" id="neg-contato"></select>
+          <div style="position:relative;">
+            <input class="form-control" id="neg-contato-busca" placeholder="Pesquisar contato…" autocomplete="off">
+            <input type="hidden" id="neg-contato">
+            <div id="neg-contato-drop"
+                 style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface2);
+                        border:1px solid var(--border);border-radius:var(--radius-sm);
+                        max-height:180px;overflow-y:auto;z-index:9999;box-shadow:var(--shadow);"></div>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Etapa *</label>
@@ -190,16 +195,14 @@ const kanban = (() => {
   async function carregarSelectsNeg() {
     try {
       const [cs, us, es] = await Promise.all([
-        api('/crm/api/contatos.php?action=lista&limit=100'),
-        api('/crm/api/usuarios.php?action=lista'),
+        api('/crm/api/contatos.php?action=lista&limit=200'),
+        api('/crm/api/usuarios.php?action=responsaveis'),
         api('/crm/api/etapas.php?action=lista'),
       ]);
       _contatos = cs.data;
       _usuarios = us.data;
 
-      document.getElementById('neg-contato').innerHTML =
-        '<option value="">Selecione…</option>' +
-        _contatos.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+      setupContatoBusca(_contatos);
 
       document.getElementById('neg-etapa').innerHTML =
         '<option value="">Selecione…</option>' +
@@ -208,18 +211,48 @@ const kanban = (() => {
       document.getElementById('neg-responsavel').innerHTML =
         _usuarios.map(u => `<option value="${u.id}">${esc(u.nome)}</option>`).join('');
     } catch(e) {
-      toast('Erro ao carregar dados', 'error');
+      toast('Erro ao carregar dados: ' + e.message, 'error');
     }
+  }
+
+  function setupContatoBusca(lista) {
+    const input  = document.getElementById('neg-contato-busca');
+    const hidden = document.getElementById('neg-contato');
+    const drop   = document.getElementById('neg-contato-drop');
+
+    function renderDrop(itens) {
+      drop.innerHTML = itens.length
+        ? itens.slice(0, 30).map(c =>
+            `<div data-id="${c.id}" data-nome="${c.nome.replace(/"/g,'&quot;')}"
+                  style="padding:8px 12px;cursor:pointer;font-size:.84rem;border-bottom:1px solid var(--border);"
+                  onmousedown="event.preventDefault()"
+                  onclick="negContatoSel(${c.id},this.dataset.nome)">${esc(c.nome)}</div>`
+          ).join('')
+        : '<div style="padding:8px 12px;color:var(--text-muted);font-size:.84rem;">Nenhum resultado</div>';
+      drop.style.display = 'block';
+    }
+
+    input.addEventListener('focus', () => renderDrop(lista));
+    input.addEventListener('input', () => {
+      const q = input.value.toLowerCase();
+      renderDrop(q ? lista.filter(c => c.nome.toLowerCase().includes(q)) : lista);
+    });
+    input.addEventListener('blur', () => setTimeout(() => { drop.style.display = 'none'; }, 150));
+
+    // Reset ao abrir criar
+    input.value  = '';
+    hidden.value = '';
   }
 
   async function salvar() {
     const titulo     = document.getElementById('neg-titulo').value.trim();
     const contatoId  = +document.getElementById('neg-contato').value;
     const etapaId    = +document.getElementById('neg-etapa').value;
+    if (!contatoId) { toast('Selecione um contato.', 'error'); document.getElementById('neg-contato-busca').focus(); return; }
     const valor      = document.getElementById('neg-valor').value;
     const respId     = +document.getElementById('neg-responsavel').value;
 
-    if (!titulo || !contatoId || !etapaId) {
+    if (!titulo || !etapaId) {
       toast('Preencha os campos obrigatórios.', 'error'); return;
     }
 
@@ -402,6 +435,13 @@ const kanban = (() => {
 </div>
 
 <script>
+// Função global para selecionar contato no dropdown
+function negContatoSel(id, nome) {
+  document.getElementById('neg-contato').value      = id;
+  document.getElementById('neg-contato-busca').value = nome;
+  document.getElementById('neg-contato-drop').style.display = 'none';
+}
+
 // Estender kanban com função de novo contato
 kanban.abrirNovoContato = function() {
   ['nc-nome','nc-tel','nc-email','nc-origem'].forEach(id => document.getElementById(id).value = '');

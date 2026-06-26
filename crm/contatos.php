@@ -62,6 +62,21 @@ layoutStart('Contatos', 'contatos');
         <label class="form-label">Origem (ex: Indicação, Site, Anúncio)</label>
         <input class="form-control" id="contato-origem">
       </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Data de nascimento</label>
+          <input class="form-control" id="contato-nascimento" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data de entrada</label>
+          <input class="form-control" id="contato-entrada" type="date">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data da última compra</label>
+        <input class="form-control" id="contato-ultima-compra" type="date">
+        <small class="text-muted">Atualizada automaticamente quando uma negociação é marcada como ganha.</small>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-contato')">Cancelar</button>
@@ -118,7 +133,7 @@ const contatos = (() => {
         <td>
           <div style="display:flex;gap:4px;">
             <button class="btn btn-ghost btn-sm btn-icon" onclick="contatos.ver(${c.id})" title="Ver detalhe">👁</button>
-            <button class="btn btn-ghost btn-sm btn-icon" onclick="contatos.editar(${c.id},'${esc(c.nome)}','${esc(c.telefone||'')}','${esc(c.email||'')}','${esc(c.origem||'')}')">✏️</button>
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="contatos.editar(${c.id})">✏️</button>
           </div>
         </td>
       </tr>`).join('');
@@ -131,29 +146,39 @@ const contatos = (() => {
 
   function abrirCriar() {
     document.getElementById('modal-contato-title').textContent = 'Novo Contato';
-    ['id','nome','tel','email','origem'].forEach(f => document.getElementById('contato-' + f).value = '');
+    ['id','nome','tel','email','origem','nascimento','entrada','ultima-compra']
+      .forEach(f => document.getElementById('contato-' + f).value = '');
     openModal('modal-contato');
   }
 
-  function editar(id, nome, tel, email, origem) {
+  async function editar(id) {
     document.getElementById('modal-contato-title').textContent = 'Editar Contato';
-    document.getElementById('contato-id').value    = id;
-    document.getElementById('contato-nome').value  = nome;
-    document.getElementById('contato-tel').value   = tel;
-    document.getElementById('contato-email').value = email;
-    document.getElementById('contato-origem').value= origem;
-    openModal('modal-contato');
+    document.getElementById('contato-id').value = id;
+    try {
+      const { contato: c } = await api(`/crm/api/contatos.php?action=detalhe&id=${id}`);
+      document.getElementById('contato-nome').value        = c.nome || '';
+      document.getElementById('contato-tel').value         = c.telefone || '';
+      document.getElementById('contato-email').value       = c.email || '';
+      document.getElementById('contato-origem').value      = c.origem || '';
+      document.getElementById('contato-nascimento').value  = (c.data_nascimento || '').slice(0,10);
+      document.getElementById('contato-entrada').value     = (c.data_entrada || '').slice(0,10);
+      document.getElementById('contato-ultima-compra').value = (c.data_ultima_compra || '').slice(0,10);
+      openModal('modal-contato');
+    } catch(e) { toast(e.message, 'error'); }
   }
 
   async function salvar() {
-    const id     = document.getElementById('contato-id').value;
-    const nome   = document.getElementById('contato-nome').value.trim();
+    const id   = document.getElementById('contato-id').value;
+    const nome = document.getElementById('contato-nome').value.trim();
     if (!nome) { toast('Nome é obrigatório.', 'error'); return; }
     const body = {
       nome,
-      telefone: document.getElementById('contato-tel').value,
-      email:    document.getElementById('contato-email').value,
-      origem:   document.getElementById('contato-origem').value,
+      telefone:          document.getElementById('contato-tel').value,
+      email:             document.getElementById('contato-email').value,
+      origem:            document.getElementById('contato-origem').value,
+      data_nascimento:   document.getElementById('contato-nascimento').value || null,
+      data_entrada:      document.getElementById('contato-entrada').value || null,
+      data_ultima_compra:document.getElementById('contato-ultima-compra').value || null,
     };
     if (id) body.id = +id;
     try {
@@ -217,6 +242,9 @@ const contatos = (() => {
               <p class="text-sm">${c.telefone ? '📱 ' + esc(c.telefone) : ''}</p>
               <p class="text-sm">${c.email    ? '✉️ ' + esc(c.email)    : ''}</p>
               <p class="text-sm text-muted">Origem: ${esc(c.origem || '—')}</p>
+              ${c.data_nascimento ? `<p class="text-sm text-muted">🎂 Nascimento: ${fmtDate(c.data_nascimento)}</p>` : ''}
+              ${c.data_entrada    ? `<p class="text-sm text-muted">📅 Entrada: ${fmtDate(c.data_entrada)}</p>` : ''}
+              ${c.data_ultima_compra ? `<p class="text-sm text-muted">🛍️ Última compra: ${fmtDate(c.data_ultima_compra)}</p>` : ''}
               <p class="text-sm text-muted mt-1">Cadastrado em: ${fmtDate(c.data_criacao)}</p>
             </div>
             <div class="card">

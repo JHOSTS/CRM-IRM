@@ -42,6 +42,22 @@ function layoutStart(string $title, string $activeNav): void {
       --accent-h: <?= $corPrim ?>cc;
       --surface:  <?= $corSec ?>;
     }
+    .logo-watermark {
+      position: fixed;
+      top: 18px;
+      left: calc(var(--sidebar-w, 240px) + 18px);
+      opacity: 0.07;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .logo-watermark img {
+      height: 52px;
+      width: auto;
+      max-width: 160px;
+      object-fit: contain;
+      filter: grayscale(30%);
+    }
+    .main-content > *:not(.logo-watermark) { position: relative; z-index: 1; }
   </style>
   <script src="/crm/assets/js/utils.js"></script>
   <script src="/crm/assets/js/app.js"></script>
@@ -151,6 +167,11 @@ function layoutStart(string $title, string $activeNav): void {
 
   <!-- Main -->
   <div class="main-content">
+    <?php if ($logo): ?>
+    <div class="logo-watermark">
+      <img src="<?= $logo ?>" alt="">
+    </div>
+    <?php endif; ?>
     <?php
 }
 

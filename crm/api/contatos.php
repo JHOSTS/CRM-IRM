@@ -94,17 +94,25 @@ if ($method === 'GET' && $action === 'detalhe') {
 // POST ?action=criar
 // ---------------------------------------------------------------
 if ($method === 'POST' && $action === 'criar') {
-    $body   = getJsonBody();
-    $nome   = clean($body['nome'] ?? '');
-    $tel    = clean($body['telefone'] ?? '');
-    $email  = clean($body['email'] ?? '');
-    $origem = clean($body['origem'] ?? '');
+    $body             = getJsonBody();
+    $nome             = clean($body['nome'] ?? '');
+    $tel              = clean($body['telefone'] ?? '');
+    $email            = clean($body['email'] ?? '');
+    $origem           = clean($body['origem'] ?? '');
+    $dataNasc         = clean($body['data_nascimento'] ?? '');
+    $dataEntrada      = clean($body['data_entrada'] ?? '');
+    $dataUltCompra    = clean($body['data_ultima_compra'] ?? '');
 
     if (!$nome) jsonResponse(['error' => 'Nome é obrigatório.'], 400);
 
+    // data_entrada: manual ou NOW()
+    $entradaVal = $dataEntrada ?: null;
+
     $stmt = $pdo->prepare(
-        "INSERT INTO contatos (empresa_id, nome, telefone, email, origem, criado_por)
-         VALUES (:emp, :nome, :tel, :email, :orig, :usr)"
+        "INSERT INTO contatos
+           (empresa_id, nome, telefone, email, origem, criado_por, data_nascimento, data_entrada, data_ultima_compra)
+         VALUES
+           (:emp, :nome, :tel, :email, :orig, :usr, :nasc, COALESCE(:ent, NOW()), :ulc)"
     );
     $stmt->execute([
         ':emp'   => $empresaId,
@@ -113,6 +121,9 @@ if ($method === 'POST' && $action === 'criar') {
         ':email' => $email ?: null,
         ':orig'  => $origem ?: null,
         ':usr'   => $user['id'],
+        ':nasc'  => $dataNasc ?: null,
+        ':ent'   => $entradaVal,
+        ':ulc'   => $dataUltCompra ?: null,
     ]);
     $newId = (int)$pdo->lastInsertId();
 
@@ -135,10 +146,13 @@ if ($method === 'POST' && $action === 'editar') {
     $campos = [];
     $params = [':id' => $id, ':emp' => $empresaId];
 
-    if (isset($body['nome']))     { $campos[] = 'nome = :nome';     $params[':nome']  = clean($body['nome']); }
-    if (isset($body['telefone'])) { $campos[] = 'telefone = :tel';  $params[':tel']   = clean($body['telefone']) ?: null; }
-    if (isset($body['email']))    { $campos[] = 'email = :email';   $params[':email'] = clean($body['email']) ?: null; }
-    if (isset($body['origem']))   { $campos[] = 'origem = :orig';   $params[':orig']  = clean($body['origem']) ?: null; }
+    if (isset($body['nome']))              { $campos[] = 'nome = :nome';               $params[':nome']  = clean($body['nome']); }
+    if (isset($body['telefone']))          { $campos[] = 'telefone = :tel';             $params[':tel']   = clean($body['telefone']) ?: null; }
+    if (isset($body['email']))             { $campos[] = 'email = :email';              $params[':email'] = clean($body['email']) ?: null; }
+    if (isset($body['origem']))            { $campos[] = 'origem = :orig';              $params[':orig']  = clean($body['origem']) ?: null; }
+    if (array_key_exists('data_nascimento', $body))    { $campos[] = 'data_nascimento = :nasc';   $params[':nasc']  = clean($body['data_nascimento']) ?: null; }
+    if (array_key_exists('data_entrada', $body))       { $campos[] = 'data_entrada = :ent';       $params[':ent']   = clean($body['data_entrada']) ?: null; }
+    if (array_key_exists('data_ultima_compra', $body)) { $campos[] = 'data_ultima_compra = :ulc'; $params[':ulc']   = clean($body['data_ultima_compra']) ?: null; }
 
     if (empty($campos)) jsonResponse(['error' => 'Nenhum campo para atualizar.'], 400);
 
