@@ -4,6 +4,7 @@ $user = getSessionUser();
 if (!in_array($user['cargo'], ['gerente','master'], true)) {
     header('Location: /crm/kanban.php'); exit;
 }
+$isMaster = $user['cargo'] === 'master';
 layoutStart('Usuários', 'usuarios');
 ?>
 
@@ -18,7 +19,17 @@ layoutStart('Usuários', 'usuarios');
     <div id="usr-content" class="hidden">
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Nome</th><th>E-mail</th><th>Cargo</th><th>Status</th><th>Último login</th><th></th></tr></thead>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>E-mail</th>
+              <th>Cargo</th>
+              <?php if ($isMaster): ?><th>Empresa</th><?php endif; ?>
+              <th>Status</th>
+              <th>Último login</th>
+              <th></th>
+            </tr>
+          </thead>
           <tbody id="usr-tbody"></tbody>
         </table>
       </div>
@@ -26,7 +37,7 @@ layoutStart('Usuários', 'usuarios');
   </div>
 </div>
 
-<!-- Modal -->
+<!-- Modal criar/editar -->
 <div id="modal-usr" class="modal-overlay hidden">
   <div class="modal">
     <div class="modal-header">
@@ -43,6 +54,14 @@ layoutStart('Usuários', 'usuarios');
         <label class="form-label">E-mail *</label>
         <input class="form-control" id="usr-email" type="email">
       </div>
+      <?php if ($isMaster): ?>
+      <div class="form-group" id="grp-empresa">
+        <label class="form-label">Empresa *</label>
+        <select class="form-select" id="usr-empresa-id">
+          <option value="">Carregando...</option>
+        </select>
+      </div>
+      <?php endif; ?>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Cargo</label>
@@ -73,6 +92,8 @@ layoutStart('Usuários', 'usuarios');
 </div>
 
 <script>
+const IS_MASTER = <?= json_encode($isMaster) ?>;
+
 const usuarios = (() => {
   async function load() {
     try {
@@ -85,8 +106,9 @@ const usuarios = (() => {
 
   function renderTabela(rows) {
     const tbody = document.getElementById('usr-tbody');
+    const cols = IS_MASTER ? 7 : 6;
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-muted)">Nenhum usuário cadastrado.</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="${cols}" style="text-align:center;padding:32px;color:var(--text-muted)">Nenhum usuário cadastrado.</td></tr>`;
       return;
     }
     tbody.innerHTML = rows.map(u => `
@@ -94,15 +116,29 @@ const usuarios = (() => {
         <td><strong>${esc(u.nome)}</strong></td>
         <td class="text-sm">${esc(u.email)}</td>
         <td><span class="badge badge-muted">${esc(u.cargo)}</span></td>
+        ${IS_MASTER ? `<td class="text-sm">${esc(u.empresa_nome || '—')}</td>` : ''}
         <td>${statusBadge(u.status)}</td>
         <td class="text-sm text-muted">${u.ultimo_login ? fmtDateTime(u.ultimo_login) : 'Nunca'}</td>
         <td>
-          <button class="btn btn-ghost btn-sm" onclick="usuarios.editar(${u.id},'${esc(u.nome)}','${esc(u.email)}','${esc(u.cargo)}','${esc(u.status)}')">✏️ Editar</button>
+          <button class="btn btn-ghost btn-sm" onclick="usuarios.editar(${u.id},'${esc(u.nome)}','${esc(u.email)}','${esc(u.cargo)}','${esc(u.status)}',${u.empresa_id||0})">✏️ Editar</button>
         </td>
       </tr>`).join('');
   }
 
-  function abrirCriar() {
+  async function carregarEmpresas(selecionadaId) {
+    const sel = document.getElementById('usr-empresa-id');
+    if (!sel) return;
+    try {
+      const d = await api('/crm/api/empresas.php?action=lista');
+      sel.innerHTML = d.data.map(e =>
+        `<option value="${e.id}" ${e.id == selecionadaId ? 'selected' : ''}>${esc(e.nome)}</option>`
+      ).join('');
+    } catch(e) {
+      sel.innerHTML = '<option value="">Erro ao carregar</option>';
+    }
+  }
+
+  async function abrirCriar() {
     document.getElementById('modal-usr-title').textContent = 'Novo Usuário';
     document.getElementById('usr-id').value     = '';
     document.getElementById('usr-nome').value   = '';
@@ -113,10 +149,16 @@ const usuarios = (() => {
     document.getElementById('usr-senha').value  = '';
     document.getElementById('usr-senha-label').textContent = 'Senha * (mín. 8 caracteres)';
     document.getElementById('usr-senha-hint').textContent  = '';
+
+    const empSel = document.getElementById('usr-empresa-id');
+    if (empSel) {
+      empSel.disabled = false;
+      await carregarEmpresas(null);
+    }
     openModal('modal-usr');
   }
 
-  function editar(id, nome, email, cargo, status) {
+  async function editar(id, nome, email, cargo, status, empresaId) {
     document.getElementById('modal-usr-title').textContent = 'Editar Usuário';
     document.getElementById('usr-id').value     = id;
     document.getElementById('usr-nome').value   = nome;
@@ -127,24 +169,41 @@ const usuarios = (() => {
     document.getElementById('usr-senha').value  = '';
     document.getElementById('usr-senha-label').textContent = 'Nova senha (deixe em branco para não alterar)';
     document.getElementById('usr-senha-hint').textContent  = 'Mínimo 8 caracteres se preencher.';
+
+    const empSel = document.getElementById('usr-empresa-id');
+    if (empSel) {
+      await carregarEmpresas(empresaId);
+      empSel.disabled = true;
+    }
     openModal('modal-usr');
   }
 
   async function salvar() {
-    const id    = document.getElementById('usr-id').value;
-    const nome  = document.getElementById('usr-nome').value.trim();
-    const email = document.getElementById('usr-email').value.trim();
-    const cargo = document.getElementById('usr-cargo').value;
-    const status= document.getElementById('usr-status').value;
-    const senha = document.getElementById('usr-senha').value;
+    const id     = document.getElementById('usr-id').value;
+    const nome   = document.getElementById('usr-nome').value.trim();
+    const email  = document.getElementById('usr-email').value.trim();
+    const cargo  = document.getElementById('usr-cargo').value;
+    const status = document.getElementById('usr-status').value;
+    const senha  = document.getElementById('usr-senha').value;
+    const empSel = document.getElementById('usr-empresa-id');
+    const empresaId = empSel ? +empSel.value : null;
 
     if (!nome) { toast('Nome é obrigatório.', 'error'); return; }
     if (!id && !email) { toast('E-mail é obrigatório.', 'error'); return; }
     if (!id && !senha) { toast('Senha é obrigatória para novo usuário.', 'error'); return; }
+    if (!id && IS_MASTER && !empresaId) { toast('Selecione a empresa do usuário.', 'error'); return; }
 
     const body = { nome, cargo, status };
-    if (!id) { body.email = email; body.senha = senha; }
-    else { body.id = +id; if (senha) body.senha = senha; }
+    if (!id) {
+      body.email = email;
+      body.senha = senha;
+      if (IS_MASTER && empresaId) body.empresa_id = empresaId;
+    } else {
+      body.id = +id;
+      if (senha) body.senha = senha;
+    }
+
+    if (empSel) empSel.disabled = false;
 
     try {
       await api('/crm/api/usuarios.php?action=' + (id ? 'editar' : 'criar'), {

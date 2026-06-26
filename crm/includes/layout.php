@@ -11,6 +11,17 @@ function layoutStart(string $title, string $activeNav): void {
     $isGerente = in_array($cargo, ['gerente','master'], true);
     $empId     = getEmpresaId($_LAYOUT_USER);
     $branding  = getEmpresaBranding($empId);
+
+    // Lista de empresas para o seletor do master
+    $empresasLista = [];
+    if ($isMaster) {
+        try {
+            $pdo2 = getDB();
+            $s2   = $pdo2->prepare("SELECT id, nome FROM empresas WHERE status = 'ativo' ORDER BY nome ASC");
+            $s2->execute();
+            $empresasLista = $s2->fetchAll();
+        } catch (PDOException $e) {}
+    }
     $corPrim   = e($branding['cor_primaria'] ?: '#4361ee');
     $corSec    = e($branding['cor_secundaria'] ?: '#1a1d27');
     $logo      = $branding['logo'] ? '/crm/' . e($branding['logo']) : null;
@@ -48,6 +59,22 @@ function layoutStart(string $title, string $activeNav): void {
         <span>CRM IRM</span>
       <?php endif; ?>
     </div>
+
+    <?php if ($isMaster && !empty($empresasLista)): ?>
+    <!-- Seletor de empresa (master) -->
+    <div style="padding:10px 12px;border-bottom:1px solid var(--border);">
+      <div style="font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:6px;">Empresa ativa</div>
+      <select id="master-empresa-sel"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:.82rem;cursor:pointer;"
+        onchange="masterTrocarEmpresa(this.value)">
+        <?php foreach ($empresasLista as $emp): ?>
+          <option value="<?= (int)$emp['id'] ?>" <?= (int)$emp['id'] === $empId ? 'selected' : '' ?>>
+            <?= e($emp['nome']) ?>
+          </option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+    <?php endif; ?>
 
     <nav class="sidebar-nav">
       <div class="nav-group-label">Principal</div>
@@ -127,6 +154,21 @@ function layoutEnd(): void {
 </div><!-- /app-layout -->
 
 <div id="toast-container"></div>
+
+<script>
+async function masterTrocarEmpresa(empresaId) {
+  try {
+    await api('/crm/api/trocar_empresa.php', {
+      method: 'POST',
+      body: JSON.stringify({ empresa_id: +empresaId }),
+    });
+    // Recarregar a página para aplicar branding e dados da nova empresa
+    window.location.reload();
+  } catch(e) {
+    toast(e.message || 'Erro ao trocar empresa.', 'error');
+  }
+}
+</script>
 </body>
 </html>
     <?php

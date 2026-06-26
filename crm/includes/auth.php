@@ -82,9 +82,14 @@ function e(string $str): string {
 }
 
 /**
- * Retorna o empresa_id seguro: sempre da sessão, nunca do request.
+ * Retorna o empresa_id ativo.
+ * Para master: usa a empresa selecionada na sessão (ou a própria se nenhuma selecionada).
+ * Para outros: sempre a empresa do usuário.
  */
 function getEmpresaId(array $user): int {
+    if ($user['cargo'] === 'master' && isset($_SESSION['active_empresa_id'])) {
+        return (int) $_SESSION['active_empresa_id'];
+    }
     return (int) $user['empresa_id'];
 }
 
