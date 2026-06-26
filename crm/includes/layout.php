@@ -42,28 +42,6 @@ function layoutStart(string $title, string $activeNav): void {
       --accent-h: <?= $corPrim ?>cc;
       --surface:  <?= $corSec ?>;
     }
-    <?php if ($logo): ?>
-    .main-content {
-      background-image: url('<?= $logo ?>');
-      background-repeat: no-repeat;
-      background-position: center center;
-      background-size: 40%;
-      background-blend-mode: luminosity;
-    }
-    .main-content::before {
-      content: '';
-      position: fixed;
-      inset: 0 0 0 var(--sidebar-w, 240px);
-      background-image: url('<?= $logo ?>');
-      background-repeat: no-repeat;
-      background-position: center center;
-      background-size: 320px auto;
-      opacity: 0.04;
-      pointer-events: none;
-      z-index: 0;
-    }
-    .main-content > * { position: relative; z-index: 1; }
-    <?php endif; ?>
   </style>
   <script src="/crm/assets/js/utils.js"></script>
   <script src="/crm/assets/js/app.js"></script>

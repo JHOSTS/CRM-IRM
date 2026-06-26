@@ -1,7 +1,8 @@
 <?php
 require_once __DIR__ . '/includes/layout.php';
-layoutStart('Atividades', 'atividades');
 $negFiltro = isset($_GET['neg']) ? (int)$_GET['neg'] : 0;
+$pageUser  = $_LAYOUT_USER;
+layoutStart('Atividades', 'atividades');
 ?>
 
 <div class="page-header">
@@ -58,7 +59,7 @@ $negFiltro = isset($_GET['neg']) ? (int)$_GET['neg'] : 0;
           <label class="form-label">Data de vencimento</label>
           <input class="form-control" id="atv-venc" type="datetime-local">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="grp-atv-resp">
           <label class="form-label">Responsável</label>
           <select class="form-select" id="atv-resp"></select>
         </div>
@@ -73,6 +74,11 @@ $negFiltro = isset($_GET['neg']) ? (int)$_GET['neg'] : 0;
 
 <script>
 const negFiltroInicial = <?= $negFiltro ?>;
+const PAGE_USER = {
+  id:    <?= (int)$pageUser['id'] ?>,
+  cargo: <?= json_encode($pageUser['cargo']) ?>,
+  nome:  <?= json_encode($pageUser['nome']) ?>,
+};
 const atv = (() => {
   let _page = 1, _filtro = '', _total = 0, _limit = 30;
 
@@ -137,9 +143,14 @@ const atv = (() => {
 
   async function carregarUsuarios() {
     try {
-      const d = await api('/crm/api/usuarios.php?action=lista');
-      document.getElementById('atv-resp').innerHTML =
-        d.data.map(u => `<option value="${u.id}">${esc(u.nome)}</option>`).join('');
+      const d = await api('/crm/api/usuarios.php?action=responsaveis');
+      const sel = document.getElementById('atv-resp');
+      sel.innerHTML = d.data.map(u => `<option value="${u.id}">${esc(u.nome)}</option>`).join('');
+      // Atendente só pode ser responsável de si mesmo
+      if (PAGE_USER.cargo === 'atendente') {
+        sel.value    = PAGE_USER.id;
+        sel.disabled = true;
+      }
     } catch {}
   }
 

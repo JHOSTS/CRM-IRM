@@ -17,22 +17,32 @@ if (getSessionUser()) {
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/crm/assets/css/style.css">
   <style>
+    /* Override style.css backgrounds so the shader canvas shows through */
+    body         { background: transparent !important; }
+    .login-page  { background: transparent !important; position: relative; z-index: 1; }
+
     #shader-bg {
       position: fixed;
       top: 0; left: 0;
       width: 100%; height: 100%;
       z-index: 0;
-    }
-    .login-page {
-      position: relative;
-      z-index: 1;
+      display: block;
     }
     .login-card {
-      background: rgba(15, 15, 30, 0.72);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(10, 8, 28, 0.78);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.09);
+      box-shadow: 0 8px 40px rgba(0,0,0,.6);
     }
+    .login-card .form-control {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.12);
+    }
+    .login-card .form-control:focus {
+      background: rgba(255,255,255,0.1);
+    }
+    .login-logo h1 { color: #fff; }
   </style>
 </head>
 <body>

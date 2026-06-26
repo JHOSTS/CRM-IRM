@@ -85,7 +85,10 @@ if ($method === 'POST' && $action === 'criar') {
     $desc        = clean($body['descricao'] ?? '');
     $vencimento  = clean($body['data_vencimento'] ?? '');
     $negId       = isset($body['negociacao_id']) ? (int)$body['negociacao_id'] : null;
-    $respId      = (int)($body['responsavel_id'] ?? $user['id']);
+    // Atendente só pode ser responsável de si mesmo
+    $respId = $user['cargo'] === 'atendente'
+        ? (int)$user['id']
+        : (int)($body['responsavel_id'] ?? $user['id']);
 
     if (!$titulo) jsonResponse(['error' => 'Título é obrigatório.'], 400);
 

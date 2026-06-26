@@ -4,12 +4,32 @@ require_once __DIR__ . '/../includes/functions.php';
 header('Content-Type: application/json; charset=utf-8');
 
 $user      = requireLogin();
-requireCargo($user, ['gerente']);
 $isMaster  = $user['cargo'] === 'master';
 $empresaId = getEmpresaId($user);
 $pdo       = getDB();
 $method    = $_SERVER['REQUEST_METHOD'];
 $action    = clean($_GET['action'] ?? '');
+
+// ---------------------------------------------------------------
+// GET ?action=responsaveis — acessível a todos os cargos
+// Atendente: retorna apenas ele mesmo
+// Gerente/Master: retorna todos da empresa ativa
+// ---------------------------------------------------------------
+if ($method === 'GET' && $action === 'responsaveis') {
+    if ($user['cargo'] === 'atendente') {
+        jsonResponse(['data' => [['id' => (int)$user['id'], 'nome' => $user['nome']]]]);
+    }
+    $stmt = $pdo->prepare(
+        "SELECT id, nome FROM usuarios
+         WHERE empresa_id = :emp AND status = 'ativo' AND cargo != 'master'
+         ORDER BY nome ASC"
+    );
+    $stmt->execute([':emp' => $empresaId]);
+    jsonResponse(['data' => $stmt->fetchAll()]);
+}
+
+// A partir daqui apenas gerente+
+requireCargo($user, ['gerente']);
 
 // ---------------------------------------------------------------
 // GET ?action=lista
