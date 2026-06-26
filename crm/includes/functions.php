@@ -1,6 +1,9 @@
 <?php
 require_once __DIR__ . '/auth.php';
 
+// Aplica o fuso do usuário logado (definido no login via navegador)
+date_default_timezone_set($_SESSION['user_timezone'] ?? 'America/Sao_Paulo');
+
 /**
  * Retorna resposta JSON e encerra execução.
  */

@@ -256,8 +256,8 @@ if ($method === 'POST' && $action === 'mover') {
         $nc->execute([':id' => $id]);
         $cid = (int)$nc->fetchColumn();
         if ($cid) {
-            $pdo->prepare("UPDATE contatos SET data_ultima_compra = CURDATE() WHERE id = :id AND empresa_id = :emp")
-                ->execute([':id' => $cid, ':emp' => $empresaId]);
+            $pdo->prepare("UPDATE contatos SET data_ultima_compra = :hoje WHERE id = :id AND empresa_id = :emp")
+                ->execute([':hoje' => date('Y-m-d'), ':id' => $cid, ':emp' => $empresaId]);
         }
     }
 
@@ -297,8 +297,8 @@ if ($method === 'POST' && $action === 'editar') {
             $nc->execute([':id' => $id, ':emp' => $empresaId]);
             $cid = (int)$nc->fetchColumn();
             if ($cid) {
-                $pdo->prepare("UPDATE contatos SET data_ultima_compra = CURDATE() WHERE id = :id AND empresa_id = :emp")
-                    ->execute([':id' => $cid, ':emp' => $empresaId]);
+                $pdo->prepare("UPDATE contatos SET data_ultima_compra = :hoje WHERE id = :id AND empresa_id = :emp")
+                    ->execute([':hoje' => date('Y-m-d'), ':id' => $cid, ':emp' => $empresaId]);
             }
         }
     }

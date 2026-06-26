@@ -228,8 +228,9 @@ document.getElementById('login-form').addEventListener('submit', async function(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: document.getElementById('email').value,
-        senha: document.getElementById('senha').value,
+        email:    document.getElementById('email').value,
+        senha:    document.getElementById('senha').value,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       }),
     });
     const data = await res.json();

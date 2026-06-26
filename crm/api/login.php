@@ -50,6 +50,13 @@ $_SESSION['user'] = [
     'cargo'      => $usuario['cargo'],
 ];
 
+// Fuso horário do navegador do usuário
+$tz = $body['timezone'] ?? 'America/Sao_Paulo';
+if (!in_array($tz, timezone_identifiers_list(), true)) {
+    $tz = 'America/Sao_Paulo';
+}
+$_SESSION['user_timezone'] = $tz;
+
 registrarLog((int)$usuario['empresa_id'], (int)$usuario['id'], 'login');
 
 jsonResponse(['success' => true, 'cargo' => $usuario['cargo'], 'nome' => $usuario['nome']]);
