@@ -334,7 +334,7 @@ const kanban = (() => {
             <div class="card mb-3" style="margin-bottom:16px;">
               <div style="font-weight:600;margin-bottom:10px;font-size:.85rem;">📞 Contato</div>
               <p><strong>${esc(n.contato_nome)}</strong></p>
-              ${n.telefone ? `<p class="text-muted text-sm">📱 ${esc(n.telefone)}</p>` : ''}
+              ${n.telefone ? `<p class="text-muted text-sm">📱 ${waTelLink(n.telefone)}</p>` : ''}
               ${n.contato_email ? `<p class="text-muted text-sm">✉️ ${esc(n.contato_email)}</p>` : ''}
             </div>
             <div class="card">
