@@ -4,7 +4,7 @@ require_once __DIR__ . '/../includes/functions.php';
 header('Content-Type: application/json; charset=utf-8');
 requireMethod('POST');
 
-$body = getJsonBody();
+$body  = getJsonBody();
 $email = clean($body['email'] ?? '');
 $senha = $body['senha'] ?? '';
 
@@ -13,6 +13,16 @@ if (!$email || !$senha) {
 }
 
 $pdo = getDB();
+
+// Rate limiting: máx 10 tentativas por IP em 15 minutos
+$ip = filter_var($_SERVER['REMOTE_ADDR'] ?? '', FILTER_VALIDATE_IP) ?: 'unknown';
+$stmtCheck = $pdo->prepare(
+    "SELECT COUNT(*) FROM login_attempts WHERE ip = :ip AND tentativa_em > DATE_SUB(NOW(), INTERVAL 15 MINUTE)"
+);
+$stmtCheck->execute([':ip' => $ip]);
+if ((int)$stmtCheck->fetchColumn() >= 10) {
+    jsonResponse(['error' => 'Muitas tentativas de login. Aguarde 15 minutos.'], 429);
+}
 
 $stmt = $pdo->prepare(
     "SELECT u.id, u.empresa_id, u.nome, u.email, u.senha_hash, u.cargo, u.status,
@@ -26,6 +36,11 @@ $stmt->execute([':email' => $email]);
 $usuario = $stmt->fetch();
 
 if (!$usuario || !password_verify($senha, $usuario['senha_hash'])) {
+    // Registrar tentativa falha e limpar antigas (1% de chance para não pesar sempre)
+    $pdo->prepare("INSERT INTO login_attempts (ip) VALUES (:ip)")->execute([':ip' => $ip]);
+    if (rand(1, 100) === 1) {
+        $pdo->exec("DELETE FROM login_attempts WHERE tentativa_em < DATE_SUB(NOW(), INTERVAL 2 HOUR)");
+    }
     jsonResponse(['error' => 'Credenciais inválidas.'], 401);
 }
 
@@ -40,6 +55,9 @@ if ($usuario['empresa_status'] !== 'ativo') {
 // Atualizar último login
 $upd = $pdo->prepare("UPDATE usuarios SET ultimo_login = NOW() WHERE id = :id");
 $upd->execute([':id' => $usuario['id']]);
+
+// Regenerar ID de sessão ao autenticar (previne session fixation)
+session_regenerate_id(true);
 
 // Salvar sessão (nunca salvar senha_hash)
 $_SESSION['user'] = [

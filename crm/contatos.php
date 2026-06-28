@@ -166,7 +166,7 @@ const contatos = (() => {
     tbody.innerHTML = rows.map(c => `
       <tr>
         <td><strong>${esc(c.nome)}</strong></td>
-        <td>${esc(c.telefone || '—')}</td>
+        <td>${waTelLink(c.telefone)}</td>
         <td class="text-sm">${esc(c.email || '—')}</td>
         <td class="text-sm">${esc(c.origem || '—')}</td>
         <td><span class="badge badge-info">${c.total_negociacoes}</span></td>
@@ -291,7 +291,7 @@ const contatos = (() => {
           <div class="detail-side">
             <div class="card mb-3" style="margin-bottom:16px;">
               <div style="font-weight:600;font-size:.85rem;margin-bottom:8px;">ℹ️ Dados</div>
-              <p class="text-sm">${c.telefone ? '📱 ' + esc(c.telefone) : ''}</p>
+              <p class="text-sm">${c.telefone ? '📱 ' + waTelLink(c.telefone) : ''}</p>
               <p class="text-sm">${c.email    ? '✉️ ' + esc(c.email)    : ''}</p>
               <p class="text-sm text-muted">Origem: ${esc(c.origem || '—')}</p>
               ${c.data_nascimento ? `<p class="text-sm text-muted">🎂 Nascimento: ${fmtDate(c.data_nascimento)}</p>` : ''}

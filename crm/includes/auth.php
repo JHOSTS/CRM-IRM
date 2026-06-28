@@ -2,11 +2,20 @@
 require_once __DIR__ . '/../config/database.php';
 
 if (session_status() === PHP_SESSION_NONE) {
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+             || ($_SERVER['SERVER_PORT'] ?? 80) == 443;
     session_start([
         'cookie_httponly' => true,
         'cookie_samesite' => 'Strict',
+        'cookie_secure'   => $isHttps,
     ]);
 }
+
+// Security headers em todas as respostas
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+header('X-XSS-Protection: 1; mode=block');
 
 /**
  * Retorna o usuário da sessão ou null se não autenticado.

@@ -16,8 +16,14 @@ if ($tipo === 'logo') {
     }
 
     $file    = $_FILES['logo'];
-    $maxSize = 2 * 1024 * 1024; // 2MB
-    $allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+    $maxSize    = 2 * 1024 * 1024; // 2MB
+    // SVG excluído: pode conter scripts inline — usar apenas formatos raster
+    $mimeToExt  = [
+        'image/jpeg' => 'jpg',
+        'image/png'  => 'png',
+        'image/webp' => 'webp',
+        'image/gif'  => 'gif',
+    ];
 
     if ($file['error'] !== UPLOAD_ERR_OK) {
         jsonResponse(['error' => 'Erro no upload do arquivo.'], 400);
@@ -27,12 +33,14 @@ if ($tipo === 'logo') {
         jsonResponse(['error' => 'Arquivo muito grande. Máximo 2MB.'], 400);
     }
 
+    // Validar pelo conteúdo real do arquivo, não pelo nome ou cabeçalho HTTP
     $mime = mime_content_type($file['tmp_name']);
-    if (!in_array($mime, $allowed, true)) {
-        jsonResponse(['error' => 'Formato inválido. Use JPG, PNG, WebP, GIF ou SVG.'], 400);
+    if (!array_key_exists($mime, $mimeToExt)) {
+        jsonResponse(['error' => 'Formato inválido. Use JPG, PNG, WebP ou GIF.'], 400);
     }
 
-    $ext     = pathinfo($file['name'], PATHINFO_EXTENSION);
+    // Extensão vem do MIME validado, nunca do nome enviado pelo usuário
+    $ext = $mimeToExt[$mime];
     $dir     = __DIR__ . '/../assets/img/logos/';
     if (!is_dir($dir)) mkdir($dir, 0755, true);
 
