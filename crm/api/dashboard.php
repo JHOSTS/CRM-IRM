@@ -96,10 +96,11 @@ $stmtContatos->execute([':emp' => $empresaId, ':ini' => $inicio, ':fim' => $fim]
 $novosContatos = (int)$stmtContatos->fetchColumn();
 
 // Leads por dia
+$respCondPlain = $respFiltro ? ' AND responsavel_id = :resp' : '';
 $stmtDia = $pdo->prepare(
     "SELECT DATE(data_criacao) AS dia, COUNT(*) AS total
      FROM negociacoes
-     WHERE empresa_id = :emp AND DATE(data_criacao) BETWEEN :ini AND :fim{$respCond}
+     WHERE empresa_id = :emp AND DATE(data_criacao) BETWEEN :ini AND :fim{$respCondPlain}
      GROUP BY DATE(data_criacao) ORDER BY dia ASC"
 );
 $stmtDia->execute(array_merge([':emp' => $empresaId, ':ini' => $inicio, ':fim' => $fim], $respParam));
