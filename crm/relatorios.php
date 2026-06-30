@@ -23,6 +23,9 @@ layoutStart('Relatórios', 'relatorios');
         <option value="ganho">Ganho</option>
         <option value="perdido">Perdido</option>
       </select>
+      <select class="form-select" id="rel-responsavel" style="width:auto">
+        <option value="">Todos os responsáveis</option>
+      </select>
       <button class="btn btn-primary btn-sm" onclick="rel.load(1)">Buscar</button>
       <button class="btn btn-ghost btn-sm" onclick="rel.exportCSV()">⬇ CSV</button>
     </div>
@@ -52,14 +55,26 @@ document.getElementById('rel-fim').value    = fim;
 const rel = (() => {
   let _page = 1, _total = 0, _limit = 50;
 
+  async function carregarResponsaveis() {
+    try {
+      const d = await api('/crm/api/usuarios.php?action=responsaveis');
+      const sel = document.getElementById('rel-responsavel');
+      sel.innerHTML = '<option value="">Todos os responsáveis</option>' +
+        (d.data || []).map(u => `<option value="${u.id}">${esc(u.nome)}</option>`).join('');
+    } catch(e) { /* silencioso */ }
+  }
+
   function getParams() {
-    return new URLSearchParams({
+    const params = new URLSearchParams({
       action: 'negociacoes',
       inicio: document.getElementById('rel-inicio').value,
       fim:    document.getElementById('rel-fim').value,
       status: document.getElementById('rel-status').value,
       page:   _page,
     });
+    const resp = document.getElementById('rel-responsavel').value;
+    if (resp) params.set('responsavel_id', resp);
+    return params;
   }
 
   async function load(page = 1) {
@@ -98,6 +113,7 @@ const rel = (() => {
     window.location.href = '/crm/api/relatorios.php?' + params;
   }
 
+  carregarResponsaveis();
   return { load, exportCSV };
 })();
 </script>
