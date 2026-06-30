@@ -251,10 +251,20 @@ if ($method === 'POST' && $action === 'mover') {
         $novoStatus = 'em_andamento';
     }
 
-    $stmt = $pdo->prepare(
-        "UPDATE negociacoes SET etapa_id = :eta, status = :status WHERE id = :id AND empresa_id = :emp"
-    );
-    $stmt->execute([':eta' => $etapaId, ':status' => $novoStatus, ':id' => $id, ':emp' => $empresaId]);
+    // Venda compartilhada: resultado vai para quem moveu o card por último
+    $vcStmt = $pdo->prepare("SELECT venda_compartilhada FROM empresas WHERE id = :id");
+    $vcStmt->execute([':id' => $empresaId]);
+    $vendaCompartilhada = (bool)$vcStmt->fetchColumn();
+
+    if ($vendaCompartilhada && in_array($novoStatus, ['ganho', 'perdido'])) {
+        $pdo->prepare(
+            "UPDATE negociacoes SET etapa_id = :eta, status = :status, responsavel_id = :uid WHERE id = :id AND empresa_id = :emp"
+        )->execute([':eta' => $etapaId, ':status' => $novoStatus, ':uid' => (int)$user['id'], ':id' => $id, ':emp' => $empresaId]);
+    } else {
+        $pdo->prepare(
+            "UPDATE negociacoes SET etapa_id = :eta, status = :status WHERE id = :id AND empresa_id = :emp"
+        )->execute([':eta' => $etapaId, ':status' => $novoStatus, ':id' => $id, ':emp' => $empresaId]);
+    }
 
     // Atualiza data_ultima_compra do contato quando negociação é ganha
     if ($novoStatus === 'ganho') {
@@ -297,6 +307,15 @@ if ($method === 'POST' && $action === 'editar') {
         if (!in_array($body['status'], ['em_andamento','ganho','perdido'], true)) jsonResponse(['error' => 'Status inválido.'], 400);
         $campos[] = 'status = :status'; $params[':status'] = $body['status'];
         if ($body['status'] === 'perdido') { $campos[] = 'motivo_perda = :mot'; $params[':mot'] = clean($body['motivo_perda'] ?? ''); }
+        if (in_array($body['status'], ['ganho', 'perdido'])) {
+            // Venda compartilhada: atribui resultado a quem editou
+            $vcStmt = $pdo->prepare("SELECT venda_compartilhada FROM empresas WHERE id = :id");
+            $vcStmt->execute([':id' => $empresaId]);
+            if ((bool)$vcStmt->fetchColumn()) {
+                $campos[] = 'responsavel_id = :resp_vc';
+                $params[':resp_vc'] = (int)$user['id'];
+            }
+        }
         if ($body['status'] === 'ganho') {
             // Atualiza data_ultima_compra do contato
             $nc = $pdo->prepare("SELECT contato_id FROM negociacoes WHERE id = :id AND empresa_id = :emp");

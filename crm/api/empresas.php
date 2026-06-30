@@ -19,6 +19,7 @@ $action = clean($_GET['action'] ?? '');
 if ($method === 'GET' && $action === 'lista') {
     $stmt = $pdo->prepare(
         "SELECT e.id, e.nome, e.logo, e.cor_primaria, e.cor_secundaria, e.status, e.data_criacao,
+                e.venda_compartilhada,
                 COUNT(u.id) AS total_usuarios
          FROM empresas e
          LEFT JOIN usuarios u ON u.empresa_id = e.id
@@ -33,13 +34,14 @@ if ($method === 'GET' && $action === 'lista') {
 // ---------------------------------------------------------------
 if ($method === 'POST' && $action === 'criar') {
     $body    = getJsonBody();
-    $nome    = clean($body['nome'] ?? '');
-    $corPrim = clean($body['cor_primaria']   ?? '#4361ee');
-    $corSec  = clean($body['cor_secundaria'] ?? '#1a1d27');
+    $nome              = clean($body['nome'] ?? '');
+    $corPrim           = clean($body['cor_primaria']      ?? '#4361ee');
+    $corSec            = clean($body['cor_secundaria']    ?? '#1a1d27');
+    $vendaCompart      = !empty($body['venda_compartilhada']) ? 1 : 0;
     if (!$nome) jsonResponse(['error' => 'Nome é obrigatório.'], 400);
 
-    $stmt = $pdo->prepare("INSERT INTO empresas (nome, cor_primaria, cor_secundaria) VALUES (:nome, :cprim, :csec)");
-    $stmt->execute([':nome' => $nome, ':cprim' => $corPrim, ':csec' => $corSec]);
+    $stmt = $pdo->prepare("INSERT INTO empresas (nome, cor_primaria, cor_secundaria, venda_compartilhada) VALUES (:nome, :cprim, :csec, :vc)");
+    $stmt->execute([':nome' => $nome, ':cprim' => $corPrim, ':csec' => $corSec, ':vc' => $vendaCompart]);
     $empresaId = (int)$pdo->lastInsertId();
 
     // Criar etapas padrão para a nova empresa
@@ -76,6 +78,9 @@ if ($method === 'POST' && $action === 'editar') {
     if (isset($body['status'])) {
         if (!in_array($body['status'], ['ativo','inativo'], true)) jsonResponse(['error' => 'Status inválido.'], 400);
         $campos[] = 'status = :status'; $params[':status'] = $body['status'];
+    }
+    if (isset($body['venda_compartilhada'])) {
+        $campos[] = 'venda_compartilhada = :vc'; $params[':vc'] = $body['venda_compartilhada'] ? 1 : 0;
     }
 
     if (empty($campos)) jsonResponse(['error' => 'Nenhum campo para atualizar.'], 400);

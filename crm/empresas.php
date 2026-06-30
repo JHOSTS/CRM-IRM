@@ -18,7 +18,7 @@ layoutStart('Empresas (Master)', 'empresas');
     <div id="emp-content" class="hidden">
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Logo</th><th>Nome</th><th>Cores</th><th>Usuários</th><th>Status</th><th>Criada em</th><th></th></tr></thead>
+          <thead><tr><th>Logo</th><th>Nome</th><th>Cores</th><th>Usuários</th><th>Venda compart.</th><th>Status</th><th>Criada em</th><th></th></tr></thead>
           <tbody id="emp-tbody"></tbody>
         </table>
       </div>
@@ -65,6 +65,18 @@ layoutStart('Empresas (Master)', 'empresas');
         <div id="prev-sidebar" style="width:14px;height:44px;border-radius:4px;transition:background .2s;"></div>
         <button id="prev-btn" style="padding:8px 16px;border-radius:6px;border:none;font-size:.85rem;font-weight:600;cursor:default;color:#fff;transition:background .2s;">Botão preview</button>
         <span class="text-muted text-sm">← Preview das cores selecionadas</span>
+      </div>
+
+      <div class="form-group" style="margin-top:8px;">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+          <input type="checkbox" id="emp-venda-compartilhada" style="width:16px;height:16px;cursor:pointer;">
+          <div>
+            <span style="font-weight:600;font-size:.88rem;">Venda compartilhada ativa</span>
+            <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px;">
+              O resultado (ganho/perda) é registrado para quem movimentou o card por último, independente de quem criou a negociação.
+            </div>
+          </div>
+        </label>
       </div>
 
       <div id="emp-status-group" class="hidden">
@@ -152,6 +164,9 @@ const emps = (() => {
           </div>
         </td>
         <td class="text-sm">${e.total_usuarios}</td>
+        <td>${e.venda_compartilhada == 1
+          ? '<span class="badge badge-success">✓ Ativa</span>'
+          : '<span class="badge badge-muted">Não</span>'}</td>
         <td>${statusBadge(e.status)}</td>
         <td class="text-sm text-muted">${fmtDate(e.data_criacao)}</td>
         <td>
@@ -163,12 +178,13 @@ const emps = (() => {
   function setForm(emp = null) {
     const prim = emp?.cor_primaria || '#4361ee';
     const sec  = emp?.cor_secundaria || '#1a1d27';
-    document.getElementById('emp-id').value           = emp?.id || '';
-    document.getElementById('emp-nome').value         = emp?.nome || '';
-    document.getElementById('emp-cor-prim').value     = prim;
-    document.getElementById('emp-cor-prim-hex').value = prim;
-    document.getElementById('emp-cor-sec').value      = sec;
-    document.getElementById('emp-cor-sec-hex').value  = sec;
+    document.getElementById('emp-id').value                    = emp?.id || '';
+    document.getElementById('emp-nome').value                  = emp?.nome || '';
+    document.getElementById('emp-cor-prim').value              = prim;
+    document.getElementById('emp-cor-prim-hex').value          = prim;
+    document.getElementById('emp-cor-sec').value               = sec;
+    document.getElementById('emp-cor-sec-hex').value           = sec;
+    document.getElementById('emp-venda-compartilhada').checked = emp?.venda_compartilhada == 1;
     updatePreview();
   }
 
@@ -222,7 +238,10 @@ const emps = (() => {
     const btn = document.getElementById('btn-salvar-emp');
     btn.disabled = true;
     try {
-      const body = { nome, cor_primaria: corPrim, cor_secundaria: corSec };
+      const body = {
+        nome, cor_primaria: corPrim, cor_secundaria: corSec,
+        venda_compartilhada: document.getElementById('emp-venda-compartilhada').checked,
+      };
       if (id) { body.id = +id; body.status = document.getElementById('emp-status').value; }
 
       const res = await api('/crm/api/empresas.php?action=' + (id ? 'editar' : 'criar'), {
