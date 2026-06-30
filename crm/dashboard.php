@@ -13,6 +13,9 @@ layoutStart('Dashboard', 'dashboard');
     <input type="date" class="form-control" id="filtro-inicio" style="width:160px">
     <span style="color:var(--text-muted)">até</span>
     <input type="date" class="form-control" id="filtro-fim" style="width:160px">
+    <select class="form-select" id="filtro-responsavel" style="width:auto">
+      <option value="">Todos os responsáveis</option>
+    </select>
     <button class="btn btn-primary btn-sm" onclick="dash.load()">Aplicar</button>
   </div>
 </div>
@@ -64,13 +67,26 @@ document.getElementById('filtro-inicio').value = ini;
 document.getElementById('filtro-fim').value    = fim;
 
 const dash = (() => {
+  async function carregarResponsaveis() {
+    try {
+      const d = await api('/crm/api/usuarios.php?action=responsaveis');
+      const sel = document.getElementById('filtro-responsavel');
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">Todos os responsáveis</option>' +
+        (d.data || []).map(u => `<option value="${u.id}" ${u.id == prev ? 'selected' : ''}>${esc(u.nome)}</option>`).join('');
+    } catch(e) { /* silencioso */ }
+  }
+
   async function load() {
     const inicio = document.getElementById('filtro-inicio').value;
     const fim    = document.getElementById('filtro-fim').value;
+    const resp   = document.getElementById('filtro-responsavel').value;
     document.getElementById('dash-loading').classList.remove('hidden');
     document.getElementById('dash-content').classList.add('hidden');
     try {
-      const d = await api(`/crm/api/dashboard.php?inicio=${inicio}&fim=${fim}`);
+      const qs = new URLSearchParams({ inicio, fim });
+      if (resp) qs.set('responsavel_id', resp);
+      const d = await api(`/crm/api/dashboard.php?${qs}`);
       renderMetrics(d);
       renderReceita(d);
       renderEtapas(d.por_etapa || []);
@@ -250,6 +266,7 @@ const dash = (() => {
       : '<p class="text-muted text-sm">Nenhum usuário com leads.</p>';
   }
 
+  carregarResponsaveis();
   load();
   return { load };
 })();

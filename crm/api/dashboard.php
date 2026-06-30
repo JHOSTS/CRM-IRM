@@ -10,18 +10,23 @@ $pdo = getDB();
 
 requireMethod('GET');
 
-$inicio = clean($_GET['inicio'] ?? date('Y-m-01'));
-$fim    = clean($_GET['fim']    ?? date('Y-m-t'));
+$inicio      = clean($_GET['inicio']        ?? date('Y-m-01'));
+$fim         = clean($_GET['fim']          ?? date('Y-m-t'));
+$respFiltro  = isset($_GET['responsavel_id']) ? (int)$_GET['responsavel_id'] : null;
+
+// Condição e parâmetro opcionais de responsável
+$respCond  = $respFiltro ? ' AND n.responsavel_id = :resp' : '';
+$respParam = $respFiltro ? [':resp' => $respFiltro] : [];
 
 // Negociações por etapa
 $stmtEtapas = $pdo->prepare(
     "SELECT e.nome, e.cor, COUNT(n.id) AS total, COALESCE(SUM(n.valor_estimado),0) AS valor_total
      FROM etapas_funil e
-     LEFT JOIN negociacoes n ON n.etapa_id = e.id AND n.empresa_id = :emp AND n.status = 'em_andamento'
+     LEFT JOIN negociacoes n ON n.etapa_id = e.id AND n.empresa_id = :emp AND n.status = 'em_andamento'{$respCond}
      WHERE e.empresa_id = :emp2
      GROUP BY e.id ORDER BY e.ordem"
 );
-$stmtEtapas->execute([':emp' => $empresaId, ':emp2' => $empresaId]);
+$stmtEtapas->execute(array_merge([':emp' => $empresaId, ':emp2' => $empresaId], $respParam));
 $porEtapa = $stmtEtapas->fetchAll();
 
 // Totais gerais no período
@@ -40,9 +45,9 @@ $stmtTotais = $pdo->prepare(
        COALESCE(SUM(CASE WHEN n.status = 'em_andamento' THEN n.valor_estimado END), 0) AS valor_pipeline
      FROM negociacoes n
      JOIN etapas_funil e ON e.id = n.etapa_id
-     WHERE n.empresa_id = :emp AND DATE(n.data_criacao) BETWEEN :ini AND :fim"
+     WHERE n.empresa_id = :emp AND DATE(n.data_criacao) BETWEEN :ini AND :fim{$respCond}"
 );
-$stmtTotais->execute([':emp' => $empresaId, ':ini' => $inicio, ':fim' => $fim]);
+$stmtTotais->execute(array_merge([':emp' => $empresaId, ':ini' => $inicio, ':fim' => $fim], $respParam));
 $totais = $stmtTotais->fetch();
 
 // Taxa de conversão
@@ -90,14 +95,14 @@ $stmtContatos = $pdo->prepare(
 $stmtContatos->execute([':emp' => $empresaId, ':ini' => $inicio, ':fim' => $fim]);
 $novosContatos = (int)$stmtContatos->fetchColumn();
 
-// Leads por dia (últimos 30 dias dentro do período)
+// Leads por dia
 $stmtDia = $pdo->prepare(
     "SELECT DATE(data_criacao) AS dia, COUNT(*) AS total
      FROM negociacoes
-     WHERE empresa_id = :emp AND DATE(data_criacao) BETWEEN :ini AND :fim
+     WHERE empresa_id = :emp AND DATE(data_criacao) BETWEEN :ini AND :fim{$respCond}
      GROUP BY DATE(data_criacao) ORDER BY dia ASC"
 );
-$stmtDia->execute([':emp' => $empresaId, ':ini' => $inicio, ':fim' => $fim]);
+$stmtDia->execute(array_merge([':emp' => $empresaId, ':ini' => $inicio, ':fim' => $fim], $respParam));
 $leadsDia = $stmtDia->fetchAll();
 
 // Leads por usuário (atendentes)
