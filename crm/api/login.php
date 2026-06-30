@@ -16,12 +16,16 @@ $pdo = getDB();
 
 // Rate limiting: máx 10 tentativas por IP em 15 minutos
 $ip = filter_var($_SERVER['REMOTE_ADDR'] ?? '', FILTER_VALIDATE_IP) ?: 'unknown';
-$stmtCheck = $pdo->prepare(
-    "SELECT COUNT(*) FROM login_attempts WHERE ip = :ip AND tentativa_em > DATE_SUB(NOW(), INTERVAL 15 MINUTE)"
-);
-$stmtCheck->execute([':ip' => $ip]);
-if ((int)$stmtCheck->fetchColumn() >= 10) {
-    jsonResponse(['error' => 'Muitas tentativas de login. Aguarde 15 minutos.'], 429);
+try {
+    $stmtCheck = $pdo->prepare(
+        "SELECT COUNT(*) FROM login_attempts WHERE ip = :ip AND tentativa_em > DATE_SUB(NOW(), INTERVAL 15 MINUTE)"
+    );
+    $stmtCheck->execute([':ip' => $ip]);
+    if ((int)$stmtCheck->fetchColumn() >= 10) {
+        jsonResponse(['error' => 'Muitas tentativas de login. Aguarde 15 minutos.'], 429);
+    }
+} catch (PDOException $e) {
+    // Tabela login_attempts ausente (migration não aplicada) — ignora rate limiting
 }
 
 $stmt = $pdo->prepare(
@@ -36,10 +40,13 @@ $stmt->execute([':email' => $email]);
 $usuario = $stmt->fetch();
 
 if (!$usuario || !password_verify($senha, $usuario['senha_hash'])) {
-    // Registrar tentativa falha e limpar antigas (1% de chance para não pesar sempre)
-    $pdo->prepare("INSERT INTO login_attempts (ip) VALUES (:ip)")->execute([':ip' => $ip]);
-    if (rand(1, 100) === 1) {
-        $pdo->exec("DELETE FROM login_attempts WHERE tentativa_em < DATE_SUB(NOW(), INTERVAL 2 HOUR)");
+    try {
+        $pdo->prepare("INSERT INTO login_attempts (ip) VALUES (:ip)")->execute([':ip' => $ip]);
+        if (rand(1, 100) === 1) {
+            $pdo->exec("DELETE FROM login_attempts WHERE tentativa_em < DATE_SUB(NOW(), INTERVAL 2 HOUR)");
+        }
+    } catch (PDOException $e) {
+        // Ignora silenciosamente se tabela ausente
     }
     jsonResponse(['error' => 'Credenciais inválidas.'], 401);
 }
